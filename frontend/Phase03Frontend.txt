@@ -1,0 +1,933 @@
+BuMIS Frontend Phase 03 - Business Owner Pages API Writeup
+
+Scope
+- Dashboard
+- Products
+- Customers
+- Vendors
+- Inventory
+
+Base URL
+- Postman collection: `http://localhost:3000/api`
+- Frontend client base: `/api` by default, or `VITE_API_BASE_URL` if set
+- Auth: all endpoints below require `Bearer <accessToken>`
+- Business context: these endpoints use the logged-in business owner scope
+
+Frontend API files
+- `frontend/src/api/dashboard.api.js` exports `dashboardApi`
+- `frontend/src/api/products.api.js` exports `productsApi`
+- `frontend/src/api/customers.api.js` exports `customersApi`
+- `frontend/src/api/vendors.api.js` exports `vendorsApi`
+- `frontend/src/api/inventory.api.js` exports `inventoryApi`
+- `frontend/src/api/index.js` re-exports all API modules
+
+Frontend page files
+- `frontend/src/pages/business/BusinessDashboardPage.jsx`
+- `frontend/src/pages/business/ProductsPage.jsx`
+- `frontend/src/pages/business/CustomersPage.jsx`
+- `frontend/src/pages/business/VendorsPage.jsx`
+- `frontend/src/pages/business/InventoryPage.jsx`
+
+====================================================================
+1) DASHBOARD
+====================================================================
+
+Purpose
+- Show business overview cards, recent activity, stock alerts, and top products.
+
+APIs to use
+
+1. GET `/dashboard/summary`
+- Frontend helper: `dashboardApi.summary()`
+
+Sample request
+```http
+GET /api/dashboard/summary
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "todaySales": {
+    "count": 4,
+    "revenue": 450000,
+    "averageSaleValue": 112500
+  },
+  "monthlySales": {
+    "revenue": 12500000,
+    "invoiceCount": 87,
+    "averageDailySales": 403225.8
+  },
+  "salesSummary": {
+    "today": { "count": 4, "revenue": 450000 },
+    "week": { "count": 21, "revenue": 2750000 },
+    "month": { "count": 87, "revenue": 12500000 },
+    "year": { "count": 980, "revenue": 143000000 }
+  },
+  "recentInvoices": [
+    {
+      "id": "inv-001",
+      "invoiceNumber": "INV-000123",
+      "customer": "Walk-in Customer",
+      "amount": 150000,
+      "status": "paid",
+      "date": "2026-07-01T08:30:00.000Z"
+    }
+  ],
+  "lowStock": [
+    {
+      "id": "prod-002",
+      "productName": "Sugar 1kg",
+      "sku": "SUG-001",
+      "currentStock": 3,
+      "minimumStock": 10
+    }
+  ],
+  "bestSellingProducts": [
+    {
+      "productId": "prod-001",
+      "productName": "Rice 25kg",
+      "quantitySold": 120,
+      "revenueGenerated": 2400000
+    }
+  ],
+  "businessStatistics": {
+    "products": 85,
+    "customers": 132,
+    "vendors": 14,
+    "activeUsers": 6,
+    "inventoryValue": 8700000,
+    "activeSubscriptionStatus": "active"
+  }
+}
+```
+
+2. GET `/dashboard/today-sales`
+- Frontend helper: `dashboardApi.todaySales()`
+
+Sample response
+```json
+{
+  "count": 4,
+  "revenue": 450000,
+  "averageSaleValue": 112500
+}
+```
+
+3. GET `/dashboard/recent-invoices`
+- Frontend helper: `dashboardApi.recentInvoices()`
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "inv-001",
+      "invoiceNumber": "INV-000123",
+      "customer": "Walk-in Customer",
+      "amount": 150000,
+      "status": "paid",
+      "date": "2026-07-01T08:30:00.000Z"
+    }
+  ]
+}
+```
+
+4. GET `/dashboard/low-stock`
+- Frontend helper: `dashboardApi.lowStock()`
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "prod-002",
+      "productName": "Sugar 1kg",
+      "sku": "SUG-001",
+      "currentStock": 3,
+      "minimumStock": 10
+    }
+  ]
+}
+```
+
+5. GET `/dashboard/best-selling-products`
+- Frontend helper: `dashboardApi.bestSellingProducts()`
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "productId": "prod-001",
+      "productName": "Rice 25kg",
+      "quantitySold": 120,
+      "revenueGenerated": 2400000
+    }
+  ]
+}
+```
+
+Frontend note
+- Use `salesSummary` for KPI cards and period tabs.
+- Use `bestSellingProducts` and `lowStock` for charts or ranked tables.
+
+====================================================================
+2) PRODUCTS
+====================================================================
+
+Purpose
+- Manage product catalog, pricing, stock levels, and inventory movement history.
+
+APIs to use
+
+1. GET `/products`
+- Frontend helper: `productsApi.list()`
+- Optional query parameters:
+  - `page`
+  - `limit`
+  - `search`
+  - `status`
+  - `categoryId`
+  - `lowStock`
+  - `businessId`
+
+Sample request
+```http
+GET /api/products?page=1&limit=20&search=rice&lowStock=true
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "prod-001",
+      "businessId": "biz-001",
+      "categoryId": "cat-001",
+      "categoryName": "Groceries",
+      "productName": "Rice 25kg",
+      "sku": "RICE-25",
+      "barcode": "1234567890123",
+      "unit": "bag",
+      "description": "Premium rice",
+      "buyingPrice": 95000,
+      "sellingPrice": 120000,
+      "profitMargin": 25000,
+      "currentStock": 18,
+      "availableStock": 18,
+      "minimumStock": 10,
+      "imageUrl": null,
+      "status": "active",
+      "stockStatus": "in_stock",
+      "lastStockMovementAt": "2026-06-30T09:10:00.000Z",
+      "createdAt": "2026-06-10T09:00:00.000Z",
+      "updatedAt": "2026-06-30T09:10:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
+```
+
+2. GET `/products/low-stock`
+- Frontend helper: `productsApi.lowStock()`
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "prod-002",
+      "productName": "Sugar 1kg",
+      "sku": "SUG-001",
+      "currentStock": 3,
+      "minimumStock": 10
+    }
+  ]
+}
+```
+
+3. GET `/products/:id`
+- Frontend helper: `productsApi.detail(id)`
+
+Sample response
+```json
+{
+  "id": "prod-001",
+  "businessId": "biz-001",
+  "categoryId": "cat-001",
+  "categoryName": "Groceries",
+  "productName": "Rice 25kg",
+  "sku": "RICE-25",
+  "barcode": "1234567890123",
+  "unit": "bag",
+  "description": "Premium rice",
+  "buyingPrice": 95000,
+  "sellingPrice": 120000,
+  "profitMargin": 25000,
+  "currentStock": 18,
+  "availableStock": 18,
+  "minimumStock": 10,
+  "imageUrl": null,
+  "status": "active",
+  "stockStatus": "in_stock",
+  "lastStockMovementAt": "2026-06-30T09:10:00.000Z",
+  "createdAt": "2026-06-10T09:00:00.000Z",
+  "updatedAt": "2026-06-30T09:10:00.000Z"
+}
+```
+
+4. GET `/products/:id/history`
+- Frontend helper: `productsApi.history(id)`
+
+Sample response
+```json
+{
+  "product": {
+    "id": "prod-001",
+    "productName": "Rice 25kg"
+  },
+  "transactions": [
+    {
+      "id": "txn-001",
+      "transactionNumber": "INV-ABC123",
+      "transactionType": "stock_in",
+      "quantity": 20,
+      "previousStock": 0,
+      "newStock": 20,
+      "reference": "Initial stock",
+      "reason": "Product creation",
+      "createdAt": "2026-06-10T09:00:00.000Z"
+    }
+  ]
+}
+```
+
+5. POST `/products`
+- Frontend helper: `productsApi.create(payload)`
+- Permission required: `product.create`
+
+Sample request body
+```json
+{
+  "categoryId": "cat-001",
+  "productName": "Rice 25kg",
+  "sku": "RICE-25",
+  "barcode": "1234567890123",
+  "unit": "bag",
+  "description": "Premium rice",
+  "buyingPrice": 95000,
+  "sellingPrice": 120000,
+  "initialStockQuantity": 20,
+  "minimumStock": 10,
+  "imageUrl": null
+}
+```
+
+Sample response
+```json
+{
+  "id": "prod-001",
+  "businessId": "biz-001",
+  "categoryId": "cat-001",
+  "categoryName": "Groceries",
+  "productName": "Rice 25kg",
+  "sku": "RICE-25",
+  "barcode": "1234567890123",
+  "unit": "bag",
+  "description": "Premium rice",
+  "buyingPrice": 95000,
+  "sellingPrice": 120000,
+  "profitMargin": 25000,
+  "currentStock": 20,
+  "availableStock": 20,
+  "minimumStock": 10,
+  "imageUrl": null,
+  "status": "active",
+  "stockStatus": "in_stock"
+}
+```
+
+6. PATCH `/products/:id`
+- Frontend helper: `productsApi.update(id, payload)`
+- Permission required: `product.update`
+
+Sample request body
+```json
+{
+  "sellingPrice": 125000,
+  "minimumStock": 12
+}
+```
+
+Sample response
+```json
+{
+  "id": "prod-001",
+  "productName": "Rice 25kg",
+  "sellingPrice": 125000,
+  "minimumStock": 12
+}
+```
+
+7. DELETE `/products/:id`
+- Frontend helper: `productsApi.remove(id)`
+- Permission required: `product.delete`
+
+Sample response
+```json
+{
+  "message": "Product archived successfully"
+}
+```
+
+====================================================================
+3) CUSTOMERS
+====================================================================
+
+Purpose
+- Manage customer records, balances, purchase history, and profiles.
+
+APIs to use
+
+1. GET `/customers`
+- Frontend helper: `customersApi.list()`
+- Optional query parameters:
+  - `page`
+  - `limit`
+  - `search`
+  - `status`
+  - `businessId`
+
+Sample request
+```http
+GET /api/customers?page=1&limit=20&search=ali
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "cust-001",
+      "businessId": "biz-001",
+      "fullName": "Ali Hassan",
+      "contactPerson": "Ali Hassan",
+      "email": "ali@example.com",
+      "phone": "+255700000002",
+      "address": "Dar es Salaam",
+      "tin": "TIN-001",
+      "notes": "Wholesale customer",
+      "balance": 0,
+      "outstandingBalance": 0,
+      "totalPurchases": 340000,
+      "invoiceCount": 5,
+      "lastPurchaseDate": "2026-06-29T10:00:00.000Z",
+      "status": "active",
+      "createdAt": "2026-06-01T08:00:00.000Z",
+      "updatedAt": "2026-06-29T10:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
+```
+
+2. GET `/customers/:id`
+- Frontend helper: `customersApi.detail(id)`
+
+Sample response
+```json
+{
+  "id": "cust-001",
+  "businessId": "biz-001",
+  "fullName": "Ali Hassan",
+  "contactPerson": "Ali Hassan",
+  "email": "ali@example.com",
+  "phone": "+255700000002",
+  "address": "Dar es Salaam",
+  "tin": "TIN-001",
+  "notes": "Wholesale customer",
+  "balance": 0,
+  "outstandingBalance": 0,
+  "totalPurchases": 340000,
+  "invoiceCount": 5,
+  "lastPurchaseDate": "2026-06-29T10:00:00.000Z",
+  "status": "active"
+}
+```
+
+3. GET `/customers/:id/profile`
+- Frontend helper: `customersApi.profile(id)`
+
+Sample response
+```json
+{
+  "customer": {
+    "id": "cust-001",
+    "fullName": "Ali Hassan",
+    "email": "ali@example.com",
+    "phone": "+255700000002",
+    "status": "active"
+  },
+  "totalPurchases": 340000,
+  "invoiceCount": 5,
+  "lastPurchaseDate": "2026-06-29T10:00:00.000Z",
+  "recentInvoices": []
+}
+```
+
+4. GET `/customers/:id/history`
+- Frontend helper: `customersApi.history(id)`
+
+Sample response
+```json
+{
+  "customer": {
+    "id": "cust-001",
+    "fullName": "Ali Hassan"
+  },
+  "invoices": [
+    {
+      "id": "inv-001",
+      "invoiceNumber": "INV-000123",
+      "totalAmount": 150000,
+      "invoiceDate": "2026-07-01T08:30:00.000Z"
+    }
+  ]
+}
+```
+
+5. POST `/customers`
+- Frontend helper: `customersApi.create(payload)`
+- Permission required: `customer.create`
+
+Sample request body
+```json
+{
+  "fullName": "Ali Hassan",
+  "contactPerson": "Ali Hassan",
+  "email": "ali@example.com",
+  "phone": "+255700000002",
+  "address": "Dar es Salaam",
+  "tin": "TIN-001",
+  "notes": "Wholesale customer"
+}
+```
+
+Sample response
+```json
+{
+  "id": "cust-001",
+  "fullName": "Ali Hassan",
+  "email": "ali@example.com",
+  "phone": "+255700000002",
+  "status": "active"
+}
+```
+
+6. PATCH `/customers/:id`
+- Frontend helper: `customersApi.update(id, payload)`
+- Permission required: `customer.update`
+
+Sample request body
+```json
+{
+  "notes": "Updated notes"
+}
+```
+
+Sample response
+```json
+{
+  "id": "cust-001",
+  "notes": "Updated notes"
+}
+```
+
+7. DELETE `/customers/:id`
+- Frontend helper: `customersApi.remove(id)`
+- Permission required: `customer.delete`
+
+Sample response
+```json
+{
+  "message": "Customer archived successfully"
+}
+```
+
+====================================================================
+4) VENDORS
+====================================================================
+
+Purpose
+- Manage supplier records, contact details, and vendor profile information.
+
+APIs to use
+
+1. GET `/vendors`
+- Frontend helper: `vendorsApi.list()`
+- Optional query parameters:
+  - `page`
+  - `limit`
+  - `search`
+  - `status`
+  - `businessId`
+
+Sample request
+```http
+GET /api/vendors?page=1&limit=20&search=global
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "vend-001",
+      "businessId": "biz-001",
+      "name": "Global Supplies Ltd",
+      "contactPerson": "Grace",
+      "email": "info@global.com",
+      "phone": "+255700000010",
+      "address": "Arusha",
+      "tin": "TIN-V001",
+      "notes": "Main supplier",
+      "status": "active",
+      "createdAt": "2026-06-01T08:00:00.000Z",
+      "updatedAt": "2026-06-29T10:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
+```
+
+2. GET `/vendors/:id`
+- Frontend helper: `vendorsApi.detail(id)`
+
+Sample response
+```json
+{
+  "id": "vend-001",
+  "businessId": "biz-001",
+  "name": "Global Supplies Ltd",
+  "contactPerson": "Grace",
+  "email": "info@global.com",
+  "phone": "+255700000010",
+  "address": "Arusha",
+  "tin": "TIN-V001",
+  "notes": "Main supplier",
+  "status": "active"
+}
+```
+
+3. GET `/vendors/:id/profile`
+- Frontend helper: `vendorsApi.profile(id)`
+
+Sample response
+```json
+{
+  "id": "vend-001",
+  "name": "Global Supplies Ltd",
+  "registrationDate": "2026-06-01T08:00:00.000Z",
+  "purchaseHistory": [],
+  "totalPurchases": 0
+}
+```
+
+4. POST `/vendors`
+- Frontend helper: `vendorsApi.create(payload)`
+- Permission required: `vendor.create`
+
+Sample request body
+```json
+{
+  "name": "Global Supplies Ltd",
+  "contactPerson": "Grace",
+  "email": "info@global.com",
+  "phone": "+255700000010",
+  "address": "Arusha",
+  "tin": "TIN-V001",
+  "notes": "Main supplier"
+}
+```
+
+Sample response
+```json
+{
+  "id": "vend-001",
+  "name": "Global Supplies Ltd",
+  "status": "active"
+}
+```
+
+5. PATCH `/vendors/:id`
+- Frontend helper: `vendorsApi.update(id, payload)`
+- Permission required: `vendor.update`
+
+Sample request body
+```json
+{
+  "notes": "Updated supplier notes"
+}
+```
+
+Sample response
+```json
+{
+  "id": "vend-001",
+  "notes": "Updated supplier notes"
+}
+```
+
+6. DELETE `/vendors/:id`
+- Frontend helper: `vendorsApi.remove(id)`
+- Permission required: `vendor.delete`
+
+Sample response
+```json
+{
+  "message": "Vendor archived successfully"
+}
+```
+
+====================================================================
+5) INVENTORY
+====================================================================
+
+Purpose
+- Track inventory movements, low stock, product-level stock status, and adjustments.
+
+APIs to use
+
+1. GET `/inventory/transactions`
+- Frontend helper: `inventoryApi.transactions()`
+- Optional query parameters:
+  - `page`
+  - `limit`
+  - `productId`
+  - `transactionType`
+  - `referenceNumber`
+  - `search`
+  - `businessId`
+
+Sample request
+```http
+GET /api/inventory/transactions?page=1&limit=20
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "txn-001",
+      "businessId": "biz-001",
+      "transactionNumber": "INV-ABC123",
+      "transactionType": "stock_in",
+      "quantity": 20,
+      "previousStock": 0,
+      "newStock": 20,
+      "unitCost": 95000,
+      "reference": "Initial stock",
+      "reason": "Product creation",
+      "notes": null,
+      "createdAt": "2026-06-10T09:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
+```
+
+2. GET `/inventory/low-stock`
+- Frontend helper: `inventoryApi.lowStock()`
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "prod-002",
+      "productName": "Sugar 1kg",
+      "sku": "SUG-001",
+      "currentStock": 3,
+      "minimumStock": 10,
+      "lastStockMovementAt": "2026-07-01T08:00:00.000Z"
+    }
+  ]
+}
+```
+
+3. GET `/inventory/products/:productId/stock`
+- Frontend helper: `inventoryApi.productStock(productId)`
+
+Sample response
+```json
+{
+  "productId": "prod-001",
+  "productName": "Rice 25kg",
+  "currentStock": 18,
+  "availableStock": 18,
+  "minimumStock": 10,
+  "lastUpdatedAt": "2026-06-30T09:10:00.000Z",
+  "lastTransaction": {
+    "id": "txn-001",
+    "transactionType": "stock_in"
+  },
+  "lowStock": false
+}
+```
+
+4. POST `/inventory/stock-in`
+- Frontend helper: `inventoryApi.stockIn(payload)`
+- Permission required: `inventory.stock_in`
+
+Sample request body
+```json
+{
+  "productId": "prod-001",
+  "quantity": 20,
+  "unitCost": 95000,
+  "vendorId": "vend-001",
+  "referenceNumber": "GRN-1001",
+  "stockInDate": "2026-07-01T08:00:00.000Z",
+  "remarks": "Supplier delivery"
+}
+```
+
+Sample response
+```json
+{
+  "transaction": {
+    "id": "txn-002",
+    "transactionType": "stock_in",
+    "quantity": 20,
+    "newStock": 38
+  },
+  "product": {
+    "id": "prod-001",
+    "currentStock": 38
+  }
+}
+```
+
+5. POST `/inventory/stock-out`
+- Frontend helper: `inventoryApi.stockOut(payload)`
+- Permission required: `inventory.stock_out`
+
+Sample request body
+```json
+{
+  "productId": "prod-001",
+  "quantity": 2,
+  "reason": "Damaged item",
+  "referenceNumber": "SO-1001",
+  "remarks": "Removed from stock"
+}
+```
+
+Sample response
+```json
+{
+  "transaction": {
+    "id": "txn-003",
+    "transactionType": "stock_out",
+    "quantity": 2,
+    "newStock": 36
+  },
+  "product": {
+    "id": "prod-001",
+    "currentStock": 36
+  }
+}
+```
+
+6. POST `/inventory/adjustments`
+- Frontend helper: `inventoryApi.adjustment(payload)`
+- Permission required: `inventory.adjustment`
+
+Sample request body
+```json
+{
+  "productId": "prod-001",
+  "adjustmentType": "increase",
+  "quantity": 5,
+  "reason": "Stock count correction",
+  "approvedByUserId": "user-001",
+  "referenceNumber": "ADJ-1001",
+  "remarks": "Cycle count adjustment"
+}
+```
+
+Sample response
+```json
+{
+  "transaction": {
+    "id": "txn-004",
+    "transactionType": "adjustment",
+    "quantity": 5,
+    "newStock": 41
+  },
+  "product": {
+    "id": "prod-001",
+    "currentStock": 41
+  }
+}
+```
+
+Frontend note
+- Use `transactions` for the inventory movement table.
+- Use `lowStock` for alert cards.
+- Use `productStock(productId)` for a product detail side panel or stock widget.
+
+====================================================================
+COMMON FRONTEND USAGE
+====================================================================
+
+Recommended import style
+```js
+import {
+  dashboardApi,
+  productsApi,
+  customersApi,
+  vendorsApi,
+  inventoryApi,
+} from '../../api/index.js'
+```
+
+Short usage sample
+```js
+const loadDashboard = async () => {
+  const summary = await dashboardApi.summary()
+  const lowStock = await dashboardApi.lowStock()
+  return { summary, lowStock }
+}
+
+const loadProducts = async () => {
+  const products = await productsApi.list()
+  const alerts = await productsApi.lowStock()
+  return { products, alerts }
+}
+
+const saveStockIn = async (payload) => {
+  return inventoryApi.stockIn(payload)
+}
+```
+
+Final note
+- These five business-owner pages are now covered with the actual API modules, backend endpoints, and example payloads.
+- Dashboard is the aggregated overview.
+- Products, Customers, and Vendors are CRUD-driven modules.
+- Inventory is action-driven and should be wired around transaction tables, low-stock alerts, and stock movement forms.

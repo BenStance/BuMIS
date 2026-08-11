@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+.env.development
+.env.production
+coverage
+uploads/temp/*
+!uploads/temp/.gitkeep
+uploads/invoices/*
+!uploads/invoices/.gitkeep
+uploads/logos/*
+!uploads/logos/.gitkeep
+uploads/products/*
+!uploads/products/.gitkeep

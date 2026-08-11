@@ -1,0 +1,676 @@
+BuMIS Frontend Phase 01 - Admin Pages API Writeup
+
+Scope
+- Admin Dashboard
+- Businesses
+- Subscription
+- Revenue Analysis
+
+Base URL
+- Postman collection: http://localhost:3000/api
+- Frontend client: `/api` by default, or `VITE_API_BASE_URL` if set
+- Auth: all admin endpoints require `Bearer <accessToken>`
+- Required admin permission: usually `Platform Administrator` with the relevant permission checks in backend
+
+====================================================================
+1) ADMIN DASHBOARD
+====================================================================
+
+Purpose
+- Show platform overview cards, activity, and chart-ready summary data.
+- Good place for KPI cards and quick platform health indicators.
+
+APIs to use
+
+1. GET `/admin/dashboard`
+- Frontend helper: `adminApi.dashboard()`
+- Use for:
+  - Total businesses
+  - Active businesses
+  - Expired subscriptions
+  - Active users
+  - Total sales invoices generated
+  - Platform revenue
+  - New registrations
+  - System health
+
+Sample request
+```http
+GET /api/admin/dashboard
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "totalBusinesses": 124,
+  "activeBusinesses": 118,
+  "expiredSubscriptions": 9,
+  "activeUsers": 342,
+  "totalSalesInvoicesGenerated": 18420,
+  "platformRevenue": 24500,
+  "newRegistrations": 11,
+  "systemHealth": {
+    "status": "ok"
+  }
+}
+```
+
+2. GET `/admin/statistics`
+- Frontend helper: `adminApi.statistics()`
+- Use for charts on the dashboard:
+  - Businesses by subscription plan
+  - Businesses by status
+  - Average users per business
+
+Sample request
+```http
+GET /api/admin/statistics
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "totalBusinesses": 124,
+  "newBusinessesThisMonth": 11,
+  "businessesBySubscriptionPlan": {
+    "Starter": 40,
+    "Growth": 58,
+    "Enterprise": 26
+  },
+  "businessesByStatus": {
+    "active": 118,
+    "suspended": 4,
+    "closed": 2
+  },
+  "averageUsersPerBusiness": 2.75
+}
+```
+
+3. GET `/admin/users/active?page=1&limit=20`
+- Frontend helper: `adminApi.activeUsers(params)`
+- Use for a dashboard table or a "recently active users" panel.
+- Optional filters:
+  - `page`
+  - `limit`
+  - `search`
+  - `businessId`
+  - `roleId`
+
+Sample request
+```http
+GET /api/admin/users/active?page=1&limit=20
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "d1b0b4a5-0e5a-4fbb-9cb2-2f2f8c4a0011",
+      "userName": "Jane Doe",
+      "business": "BuMIS Demo Ltd",
+      "role": "Manager",
+      "lastLogin": "2026-06-30T09:12:41.000Z",
+      "accountStatus": "active"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 342
+}
+```
+
+Frontend note
+- For graphs, use:
+  - `businessesBySubscriptionPlan` as a bar chart or doughnut chart
+  - `businessesByStatus` as a status pie chart
+  - `activeUsers` as a KPI card or leaderboard table
+
+====================================================================
+2) BUSINESSES
+====================================================================
+
+Purpose
+- Manage registered businesses, review business details, and support impersonation for troubleshooting.
+
+APIs to use
+
+1. GET `/admin/businesses?page=1&limit=20`
+- Frontend helper: `adminApi.businesses(params)`
+- Optional filters:
+  - `page`
+  - `limit`
+  - `search`
+  - `status`
+
+Sample request
+```http
+GET /api/admin/businesses?page=1&limit=20&search=demo&status=active
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+      "businessName": "BuMIS Demo Ltd",
+      "ownerName": "Benedict ACT",
+      "registrationDate": "2026-06-02T08:30:00.000Z",
+      "subscriptionPlan": "Growth",
+      "subscriptionStatus": "active",
+      "activeUsers": 5,
+      "currentStatus": "active"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 124
+}
+```
+
+2. GET `/admin/businesses/:id`
+- Frontend helper: `adminApi.business(id)`
+- Use for a business detail drawer or profile page.
+
+Sample request
+```http
+GET /api/admin/businesses/a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "id": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+  "businessName": "BuMIS Demo Ltd",
+  "logo": null,
+  "address": "Dar es Salaam",
+  "phone": "+255700000000",
+  "email": "info@example.com",
+  "tin": "123-456-789",
+  "status": "active",
+  "activeSubscription": {
+    "id": "3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002",
+    "plan": "Growth",
+    "status": "active",
+    "startDate": "2026-06-01T00:00:00.000Z",
+    "endDate": "2026-07-01T00:00:00.000Z"
+  },
+  "activeUsers": 5
+}
+```
+
+3. GET `/admin/statistics`
+- Frontend helper: `adminApi.statistics()`
+- Reuse this on the Businesses page for:
+  - Plan distribution
+  - Status distribution
+  - General business metrics
+
+Sample response
+```json
+{
+  "totalBusinesses": 124,
+  "newBusinessesThisMonth": 11,
+  "businessesBySubscriptionPlan": {
+    "Starter": 40,
+    "Growth": 58,
+    "Enterprise": 26
+  },
+  "businessesByStatus": {
+    "active": 118,
+    "suspended": 4,
+    "closed": 2
+  },
+  "averageUsersPerBusiness": 2.75
+}
+```
+
+4. GET `/admin/users/active?page=1&limit=20&businessId=<id>`
+- Frontend helper: `adminApi.activeUsers(params)`
+- Use when showing the active users inside a selected business.
+
+Sample request
+```http
+GET /api/admin/users/active?page=1&limit=20&businessId=a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "c68d5a5f-8c63-4f1a-9cf6-5c5df9f0e222",
+      "userName": "Jane Doe",
+      "business": "BuMIS Demo Ltd",
+      "role": "Manager",
+      "lastLogin": "2026-06-30T09:12:41.000Z",
+      "accountStatus": "active"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 5
+}
+```
+
+5. POST `/admin/login-as-business/:businessId`
+- Frontend helper: `adminApi.loginAsBusiness(id)`
+- Use for support or verification when the admin needs to enter a business-scoped session.
+
+Sample request
+```http
+POST /api/admin/login-as-business/a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{}
+```
+
+Sample response
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "business": {
+    "id": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+    "businessName": "BuMIS Demo Ltd",
+    "status": "active"
+  },
+  "admin": {
+    "id": "7a28f3c9-73d8-4c71-91bf-2b9c1fd0c111",
+    "email": "benedict@bumis.com",
+    "fullName": "Benedict ACT"
+  }
+}
+```
+
+Frontend note
+- The Businesses page can use the list endpoint for the table, the detail endpoint for a side panel/modal, and the impersonation endpoint for the "Login as Business" action.
+
+====================================================================
+3) SUBSCRIPTION
+====================================================================
+
+Purpose
+- View business subscriptions, renew them, update status, and optionally manage plans.
+
+APIs to use
+
+1. GET `/admin/subscriptions?page=1&limit=20`
+- Frontend helper: `adminApi.subscriptions(params)`
+- Optional filters:
+  - `page`
+  - `limit`
+  - `businessId`
+  - `status`
+
+Sample request
+```http
+GET /api/admin/subscriptions?page=1&limit=20&status=active
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002",
+      "business": "BuMIS Demo Ltd",
+      "plan": "Growth",
+      "status": "active",
+      "startDate": "2026-06-01T00:00:00.000Z",
+      "endDate": "2026-07-01T00:00:00.000Z",
+      "gracePeriodDays": 7,
+      "autoRenew": true
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 54
+}
+```
+
+2. PATCH `/admin/subscriptions/:subscriptionId/renew`
+- Frontend helper: `adminApi.renewSubscription(id, payload)`
+- Use to renew a subscription from the admin page.
+
+Sample request
+```http
+PATCH /api/admin/subscriptions/3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002/renew
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "planId": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+  "startDate": "2026-06-30T00:00:00.000Z",
+  "endDate": "2026-07-30T00:00:00.000Z",
+  "gracePeriodDays": 7
+}
+```
+
+Sample response
+```json
+{
+  "id": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+  "businessName": "BuMIS Demo Ltd",
+  "logo": null,
+  "address": "Dar es Salaam",
+  "phone": "+255700000000",
+  "email": "info@example.com",
+  "tin": "123-456-789",
+  "status": "active",
+  "activeSubscription": {
+    "id": "3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002",
+    "plan": "Growth",
+    "status": "active",
+    "startDate": "2026-06-30T00:00:00.000Z",
+    "endDate": "2026-07-30T00:00:00.000Z"
+  },
+  "activeUsers": 5
+}
+```
+
+3. PATCH `/admin/subscriptions/:subscriptionId/status`
+- Frontend helper: `adminApi.updateSubscriptionStatus(id, payload)`
+- Use to move a subscription between statuses such as `active`, `expired`, `grace`, `cancelled`, or `pending`.
+
+Sample request
+```http
+PATCH /api/admin/subscriptions/3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002/status
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+
+{
+  "status": "active"
+}
+```
+
+Sample response
+```json
+{
+  "id": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+  "businessName": "BuMIS Demo Ltd",
+  "logo": null,
+  "address": "Dar es Salaam",
+  "phone": "+255700000000",
+  "email": "info@example.com",
+  "tin": "123-456-789",
+  "status": "active",
+  "activeSubscription": {
+    "id": "3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002",
+    "plan": "Growth",
+    "status": "active",
+    "startDate": "2026-06-30T00:00:00.000Z",
+    "endDate": "2026-07-30T00:00:00.000Z"
+  },
+  "activeUsers": 5
+}
+```
+
+4. GET `/subscriptions/plans`
+- Frontend helper: `subscriptionsApi.plans()`
+- Use if the Subscription page also needs the plan picker, plan cards, or plan selection for renew/assign flows.
+
+Sample request
+```http
+GET /api/subscriptions/plans
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+[
+  {
+    "id": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+    "name": "Growth",
+    "billingCycle": "monthly",
+    "price": 25,
+    "durationDays": 30,
+    "isActive": true,
+    "features": "POS, reports, inventory alerts"
+  }
+]
+```
+
+5. POST `/subscriptions/plans`
+- Frontend helper: `subscriptionsApi.createPlan(payload)`
+- Use only if you want the Subscription page to manage plan catalog records.
+
+Sample request body
+```json
+{
+  "name": "Growth",
+  "billingCycle": "monthly",
+  "price": 25,
+  "durationDays": 30,
+  "isActive": true,
+  "features": "POS, reports, inventory alerts"
+}
+```
+
+Sample response
+```json
+{
+  "id": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+  "name": "Growth",
+  "billingCycle": "monthly",
+  "price": 25,
+  "durationDays": 30,
+  "isActive": true,
+  "features": "POS, reports, inventory alerts"
+}
+```
+
+6. PATCH `/subscriptions/plans/:id`
+- Frontend helper: `subscriptionsApi.updatePlan(id, payload)`
+
+Sample request body
+```json
+{
+  "price": 30,
+  "features": "POS, reports, inventory alerts, SMS reminders"
+}
+```
+
+Sample response
+```json
+{
+  "id": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+  "name": "Growth",
+  "billingCycle": "monthly",
+  "price": 30,
+  "durationDays": 30,
+  "isActive": true,
+  "features": "POS, reports, inventory alerts, SMS reminders"
+}
+```
+
+7. DELETE `/subscriptions/plans/:id`
+- Frontend helper: `subscriptionsApi.deletePlan(id)`
+
+Sample response
+```json
+{
+  "message": "Plan deleted"
+}
+```
+
+8. POST `/subscriptions/businesses`
+- Frontend helper: `subscriptionsApi.createBusinessSubscription(payload)`
+- Use when assigning a business to a plan.
+
+Sample request body
+```json
+{
+  "businessId": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+  "planId": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+  "startDate": "2026-06-30T00:00:00.000Z",
+  "endDate": "2026-07-30T00:00:00.000Z",
+  "gracePeriodDays": 7
+}
+```
+
+Sample response
+```json
+{
+  "id": "3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002",
+  "businessId": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+  "planId": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+  "startDate": "2026-06-30T00:00:00.000Z",
+  "endDate": "2026-07-30T00:00:00.000Z",
+  "gracePeriodDays": 7,
+  "status": "active"
+}
+```
+
+9. GET `/subscriptions/businesses/:businessId`
+- Frontend helper: `subscriptionsApi.business(businessId)`
+- Use when you want to show all subscriptions assigned to a business.
+
+Sample request
+```http
+GET /api/subscriptions/businesses/a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+[
+  {
+    "id": "3f0c62f1-8f3b-4f58-b530-9fd0b8bd1002",
+    "businessId": "a8d8e6f0-4b7c-4bd6-b8d1-0d7bfb80f901",
+    "plan": {
+      "id": "9a76f9ef-2c4c-4a01-bf46-1e2b1e7aa101",
+      "name": "Growth",
+      "billingCycle": "monthly",
+      "price": 25,
+      "durationDays": 30,
+      "isActive": true,
+      "features": "POS, reports, inventory alerts"
+    },
+    "startDate": "2026-06-30T00:00:00.000Z",
+    "endDate": "2026-07-30T00:00:00.000Z",
+    "gracePeriodDays": 7,
+    "status": "active"
+  }
+]
+```
+
+Frontend note
+- The Subscription page can be split into:
+  - subscription list from `/admin/subscriptions`
+  - renew/status actions from `/admin/subscriptions/:id/...`
+  - plan catalog management from `/subscriptions/plans`
+
+====================================================================
+4) REVENUE ANALYSIS
+====================================================================
+
+Purpose
+- Show platform-wide subscription revenue and performance breakdowns.
+- This page is chart-friendly without needing extra endpoints.
+
+APIs to use
+
+1. GET `/admin/revenue`
+- Frontend helper: `adminApi.revenue()`
+- Use for:
+  - Monthly subscription revenue
+  - Annual revenue projection
+  - Revenue by subscription plan
+  - Active vs expired subscriptions
+  - Renewal rate
+
+Sample request
+```http
+GET /api/admin/revenue
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "monthlySubscriptionRevenue": 2450,
+  "annualRevenue": 29400,
+  "revenueBySubscriptionPlan": {
+    "Starter": 400,
+    "Growth": 1500,
+    "Enterprise": 550
+  },
+  "activeVsExpiredSubscriptions": {
+    "active": 118,
+    "expired": 9
+  },
+  "subscriptionRenewalRate": 0.93
+}
+```
+
+Frontend chart suggestions
+- Bar chart: `revenueBySubscriptionPlan`
+- Doughnut chart: `activeVsExpiredSubscriptions`
+- KPI cards:
+  - `monthlySubscriptionRevenue`
+  - `annualRevenue`
+  - `subscriptionRenewalRate`
+
+====================================================================
+COMMON FRONTEND MAPPING
+====================================================================
+
+adminApi methods already available
+- `adminApi.dashboard()`
+- `adminApi.businesses(params)`
+- `adminApi.business(id)`
+- `adminApi.statistics()`
+- `adminApi.activeUsers(params)`
+- `adminApi.subscriptions(params)`
+- `adminApi.revenue()`
+- `adminApi.loginAsBusiness(id)`
+- `adminApi.renewSubscription(id, payload)`
+- `adminApi.updateSubscriptionStatus(id, payload)`
+
+subscriptionsApi methods that may also be useful on the Subscription page
+- `subscriptionsApi.plans()`
+- `subscriptionsApi.createPlan(payload)`
+- `subscriptionsApi.updatePlan(id, payload)`
+- `subscriptionsApi.deletePlan(id)`
+- `subscriptionsApi.createBusinessSubscription(payload)`
+- `subscriptionsApi.renew(id, payload)`
+- `subscriptionsApi.business(businessId)`
+
+Frontend API paths
+- `frontend/src/api/admin.api.js` exports `adminApi`
+- `frontend/src/api/business.api.js` exports `businessApi`
+- `frontend/src/api/subscriptions.api.js` exports `subscriptionsApi`
+- `frontend/src/api/dashboard.api.js` exports `dashboardApi`
+- `frontend/src/api/reports.api.js` exports `reportsApi`
+- `frontend/src/api/index.js` re-exports all API modules
+
+Sample consumption
+```js
+import { adminApi, subscriptionsApi } from '@/api'
+
+const loadAdminDashboard = async () => {
+  const summary = await adminApi.dashboard()
+  const revenue = await adminApi.revenue()
+  return { summary, revenue }
+}
+
+const loadAdminSubscriptions = async () => {
+  const items = await adminApi.subscriptions({ page: 1, limit: 20 })
+  const plans = await subscriptionsApi.plans()
+  return { items, plans }
+}
+```
+
+Final note
+- The four admin pages can be built cleanly from the endpoints above.
+- The dashboard and revenue pages already have chart-ready aggregated responses.
+- The businesses and subscriptions pages use paginated list APIs with filters, plus detail/action endpoints for modal or drawer workflows.

@@ -1,0 +1,17 @@
+export const ROUTES = {
+  landing: '/',
+  login: '/login',
+  forgotPassword: '/forgot-password',
+  resetPassword: '/reset-password',
+  changePassword: '/change-password',
+  dashboard: '/dashboard',
+  invoices: '/invoices',
+  invoiceCreate: '/invoices/new',
+  audit: '/audit',
+  settings: '/settings',
+  admin: '/admin',
+  adminBusinesses: '/admin/businesses',
+  adminRevenue: '/admin/revenue',
+  adminLoginAsBusiness: '/admin/login-as-business',
+  reports: '/reports',
+}

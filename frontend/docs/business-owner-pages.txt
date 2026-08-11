@@ -1,0 +1,19 @@
+BuMIS Business Owner Pages
+
+1. /dashboard - Business dashboard
+2. /invoices - Invoice list
+3. /invoices/new - Create invoice
+4. /invoices/:id - Invoice details
+5. /products - Products
+6. /categories - Categories
+7. /customers - Customers
+8. /vendors - Vendors
+9. /inventory - Inventory
+10. /ledger - Ledger
+11. /users - Team users
+12. /roles - Business roles
+13. /permissions - Business permissions
+14. /reports - Reports
+15. /subscription - Subscription
+16. /settings - Business settings
+17. /audit - Audit logs

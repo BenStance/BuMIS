@@ -1,0 +1,12 @@
+BuMIS Staff Pages
+
+1. /dashboard - Staff dashboard
+2. /invoices - Invoice list
+3. /invoices/new - Create invoice
+4. /invoices/:id - Invoice details
+5. /products - Products
+6. /customers - Customers
+7. /vendors - Vendors
+8. /inventory - Inventory
+9. /reports - Reports
+10. /audit - Audit logs

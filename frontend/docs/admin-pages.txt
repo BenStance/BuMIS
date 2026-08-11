@@ -1,0 +1,12 @@
+BuMIS Admin Pages
+
+1. /dashboard - Platform dashboard
+2. /admin/businesses - Business management
+3. /admin/subscriptions - Subscription oversight
+4. /admin/revenue - Revenue analytics
+5. /admin/login-as-business - Login as business
+6. /users - User management
+7. /roles - Roles management
+8. /permissions - Permissions management
+9. /audit - Audit logs
+10. /settings - System settings

@@ -1,0 +1,703 @@
+BuMIS Frontend Phase 04 - Business Owner Pages API Writeup
+
+Scope
+- Reports
+- Users
+- Subscription
+
+Base URL
+- Postman collection: `http://localhost:3000/api`
+- Frontend client base: `/api` by default, or `VITE_API_BASE_URL` if set
+- Auth: all endpoints below require `Bearer <accessToken>`
+- Business context: these endpoints use the logged-in business owner scope unless a specific `businessId` is provided
+
+Frontend API files
+- `frontend/src/api/reports.api.js` exports `reportsApi`
+- `frontend/src/api/users.api.js` exports `usersApi`
+- `frontend/src/api/roles.api.js` exports `rolesApi`
+- `frontend/src/api/permissions.api.js` exports `permissionsApi`
+- `frontend/src/api/subscriptions.api.js` exports `subscriptionsApi`
+- `frontend/src/api/index.js` re-exports all API modules
+
+Frontend page files
+- `frontend/src/pages/reports/ReportsPage.jsx`
+- `frontend/src/pages/business/UsersPage.jsx`
+- `frontend/src/pages/business/SubscriptionPage.jsx`
+
+====================================================================
+1) REPORTS
+====================================================================
+
+Purpose
+- Provide business reporting for sales, customers, products, inventory, invoices, and trends.
+- The current UI shell is `ReportsPage`, which is a scaffold, but the backend already exposes the reporting APIs needed for a full dashboard.
+
+APIs to use
+
+1. GET `/reports/sales/daily`
+- Frontend helper: `reportsApi.dailySales(params)`
+- Optional query parameters:
+  - `date`
+
+Sample request
+```http
+GET /api/reports/sales/daily?date=2026-07-06
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "count": 4,
+  "revenue": 450000,
+  "discounts": 12000,
+  "tax": 0,
+  "netSales": 450000
+}
+```
+
+2. GET `/reports/sales/monthly`
+- Frontend helper: `reportsApi.monthlySales(params)`
+- Optional query parameters:
+  - `year`
+  - `month`
+
+Sample request
+```http
+GET /api/reports/sales/monthly?year=2026&month=7
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "count": 87,
+  "revenue": 12500000,
+  "discounts": 300000,
+  "tax": 0,
+  "netSales": 12500000,
+  "year": 2026,
+  "month": 7
+}
+```
+
+3. GET `/reports/sales/annual`
+- Frontend helper: `reportsApi.annualSales(params)`
+- Optional query parameters:
+  - `year`
+
+Sample request
+```http
+GET /api/reports/sales/annual?year=2026
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "count": 980,
+  "revenue": 143000000,
+  "discounts": 2100000,
+  "tax": 0,
+  "netSales": 143000000,
+  "year": 2026
+}
+```
+
+4. GET `/reports/customers/:id`
+- Frontend helper: `reportsApi.customerReport(id)`
+
+Sample request
+```http
+GET /api/reports/customers/66E351E0-0D76-F111-B456-A4B1C19FEC77
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "customer": {
+    "id": "66E351E0-0D76-F111-B456-A4B1C19FEC77",
+    "fullName": "Benedict Nsale",
+    "balance": 0,
+    "status": "active"
+  },
+  "purchaseHistory": [
+    {
+      "id": "C9DFA4D2-E776-F111-B456-A4B1C19FEC77",
+      "invoiceNumber": "INV-2026-000001",
+      "totalAmount": 3000,
+      "invoiceDate": "2026-06-28T21:00:00.000Z"
+    }
+  ],
+  "totalPurchases": 3000,
+  "lastPurchaseDate": "2026-06-28T21:00:00.000Z",
+  "outstandingBalance": 0
+}
+```
+
+5. GET `/reports/products`
+- Frontend helper: `reportsApi.productReports(params)`
+- Optional query parameters:
+  - currently accepted as a query object, but the service does not require any filters yet
+
+Sample request
+```http
+GET /api/reports/products
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "productId": "prod-001",
+      "productName": "Rice 25kg",
+      "sku": "RICE-25",
+      "quantitySold": 120,
+      "revenue": 2400000
+    }
+  ]
+}
+```
+
+6. GET `/reports/inventory`
+- Frontend helper: `reportsApi.inventoryReports()`
+
+Sample request
+```http
+GET /api/reports/inventory
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "currentStockLevels": [
+    {
+      "id": "prod-001",
+      "productName": "Rice 25kg",
+      "sku": "RICE-25",
+      "currentStock": 18,
+      "minimumStock": 10
+    }
+  ],
+  "lowStockItems": [
+    {
+      "id": "prod-002",
+      "productName": "Sugar 1kg",
+      "sku": "SUG-001",
+      "currentStock": 3,
+      "minimumStock": 10
+    }
+  ],
+  "inventoryMovements": [
+    {
+      "id": "txn-001",
+      "transactionNumber": "INV-ABC123",
+      "transactionType": "stock_in",
+      "quantity": 20
+    }
+  ],
+  "stockAdjustmentHistory": [
+    {
+      "id": "txn-002",
+      "transactionType": "adjustment",
+      "quantity": 2
+    }
+  ]
+}
+```
+
+7. GET `/reports/invoices`
+- Frontend helper: `reportsApi.invoiceReports(params)`
+- Optional query parameters:
+  - `status`
+  - `paymentMethod`
+  - `customerId`
+  - `salespersonId`
+  - `dateFrom`
+  - `dateTo`
+
+Sample request
+```http
+GET /api/reports/invoices?status=paid&paymentMethod=cash
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "C9DFA4D2-E776-F111-B456-A4B1C19FEC77",
+      "invoiceNumber": "INV-2026-000001",
+      "customer": "Benedict Nsale",
+      "salesperson": "Business Owner",
+      "paymentMethod": "cash",
+      "status": "paid",
+      "amount": 3000,
+      "date": "2026-06-28T21:00:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+8. GET `/reports/trends`
+- Frontend helper: `reportsApi.salesTrends(params)`
+- Optional query parameters:
+  - `dateFrom`
+  - `dateTo`
+
+Sample request
+```http
+GET /api/reports/trends?dateFrom=2026-01-01&dateTo=2026-07-06
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "label": "Jan 2026",
+      "revenue": 1200000,
+      "count": 11
+    },
+    {
+      "label": "Feb 2026",
+      "revenue": 1800000,
+      "count": 15
+    }
+  ]
+}
+```
+
+Frontend note
+- Use `dailySales`, `monthlySales`, and `annualSales` for KPI cards and time-based summaries.
+- Use `productReports` for top-selling product charts.
+- Use `inventoryReports` for stock-level panels and low-stock alerts.
+- Use `invoiceReports` for invoice analysis tables and filters.
+- Use `salesTrends` for chart series.
+
+====================================================================
+2) USERS
+====================================================================
+
+Purpose
+- Manage business users, activation state, role assignment, and staff permissions.
+- The current business page is a scaffold, but the backend already supports the full lifecycle.
+
+APIs to use
+
+1. GET `/users`
+- Frontend helper: `usersApi.list()`
+- Optional query parameters:
+  - `businessId`
+
+Sample request
+```http
+GET /api/users?businessId=8EAE9DFA-5574-F111-B456-A4B1C19FEC77
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+[
+  {
+    "id": "8EAE9DFA-5574-F111-B456-A4B1C19FEC77",
+    "businessId": "8EAE9DFA-5574-F111-B456-A4B1C19FEC77",
+    "roleId": "role-owner",
+    "fullName": "Business Owner",
+    "email": "owner@example.com",
+    "phone": "+255700000001",
+    "position": "Owner",
+    "status": "active",
+    "role": {
+      "id": "role-owner",
+      "name": "Owner"
+    },
+    "business": {
+      "id": "8EAE9DFA-5574-F111-B456-A4B1C19FEC77",
+      "businessName": "Bizman Store"
+    },
+    "createdAt": "2026-06-01T08:00:00.000Z",
+    "updatedAt": "2026-07-01T08:00:00.000Z"
+  }
+]
+```
+
+2. GET `/users/:id`
+- Frontend helper: `usersApi.detail(id)`
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "businessId": "biz-001",
+  "roleId": "role-staff",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+255700000010",
+  "position": "Cashier",
+  "status": "active",
+  "role": {
+    "id": "role-staff",
+    "name": "Staff"
+  },
+  "business": {
+    "id": "biz-001",
+    "businessName": "Bizman Store"
+  },
+  "permissions": [
+    {
+      "permission": {
+        "id": "perm-001",
+        "code": "invoice.view"
+      }
+    }
+  ]
+}
+```
+
+3. GET `/users/:id/profile`
+- Frontend helper: `usersApi.profile(id)`
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "status": "active",
+  "permissions": ["invoice.view", "customer.view"]
+}
+```
+
+4. POST `/users`
+- Frontend helper: `usersApi.create(payload)`
+- Permission required: `user.create`
+
+Sample request body
+```json
+{
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+255700000010",
+  "position": "Cashier",
+  "roleId": "role-staff",
+  "businessId": "biz-001",
+  "password": "Secret123!"
+}
+```
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "status": "active"
+}
+```
+
+5. PATCH `/users/:id`
+- Frontend helper: `usersApi.update(id, payload)`
+- Permission required: `user.update`
+
+Sample request body
+```json
+{
+  "fullName": "Jane A. Doe",
+  "phone": "+255700000011",
+  "position": "Senior Cashier",
+  "roleId": "role-staff",
+  "businessId": "biz-001"
+}
+```
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "fullName": "Jane A. Doe",
+  "position": "Senior Cashier"
+}
+```
+
+6. DELETE `/users/:id`
+- Frontend helper: `usersApi.remove(id)`
+- Permission required: `user.delete`
+
+Sample response
+```json
+{
+  "message": "User deleted"
+}
+```
+
+7. POST `/users/:id/activate`
+- Frontend helper: `usersApi.activate(id)`
+- Permission required: `user.activate`
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "status": "active"
+}
+```
+
+8. POST `/users/:id/deactivate`
+- Frontend helper: `usersApi.deactivate(id)`
+- Permission required: `user.deactivate`
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "status": "inactive"
+}
+```
+
+9. POST `/users/:id/role`
+- Frontend helper: `usersApi.assignRole(id, payload)`
+- Permission required: `user.update`
+
+Sample request body
+```json
+{
+  "roleId": "role-manager"
+}
+```
+
+Sample response
+```json
+{
+  "id": "user-001",
+  "roleId": "role-manager"
+}
+```
+
+10. POST `/users/:id/permissions`
+- Frontend helper: `usersApi.assignPermissions(id, payload)`
+- Permission required: `user.update`
+
+Sample request body
+```json
+{
+  "permissionIds": ["perm-001", "perm-002", "perm-003"]
+}
+```
+
+Sample response
+```json
+{
+  "message": "Permissions assigned to user"
+}
+```
+
+Supporting APIs for the Users page
+
+11. GET `/roles`
+- Frontend helper: `rolesApi.list()`
+
+Sample response
+```json
+[
+  {
+    "id": "role-staff",
+    "name": "Staff"
+  }
+]
+```
+
+12. GET `/permissions`
+- Frontend helper: `permissionsApi.list()`
+
+Sample response
+```json
+[
+  {
+    "id": "perm-001",
+    "code": "invoice.view",
+    "name": "View invoices"
+  }
+]
+```
+
+Frontend note
+- Use `usersApi.list()` to populate the table.
+- Use `rolesApi.list()` and `permissionsApi.list()` to populate role and permission selectors.
+- Use `usersApi.profile(id)` when showing a detail drawer or profile modal.
+- For a business-only view, pass the current `businessId` to `usersApi.list({ businessId })`.
+
+====================================================================
+3) SUBSCRIPTION
+====================================================================
+
+Purpose
+- Show the current business subscription, available plans, and renewal options.
+- The business route is currently a scaffold, but the backend and API client already support the full subscription flow.
+
+APIs to use
+
+1. GET `/subscriptions/plans`
+- Frontend helper: `subscriptionsApi.plans()`
+
+Sample request
+```http
+GET /api/subscriptions/plans
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+[
+  {
+    "id": "plan-monthly",
+    "name": "Starter Monthly",
+    "billingCycle": "monthly",
+    "price": 25000,
+    "durationDays": 30,
+    "isActive": true,
+    "features": "POS, reports, inventory alerts"
+  }
+]
+```
+
+2. GET `/subscriptions/businesses/:businessId`
+- Frontend helper: `subscriptionsApi.business(businessId)`
+
+Sample request
+```http
+GET /api/subscriptions/businesses/biz-001
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+[
+  {
+    "id": "sub-001",
+    "businessId": "biz-001",
+    "planId": "plan-monthly",
+    "plan": {
+      "id": "plan-monthly",
+      "name": "Starter Monthly",
+      "price": 25000
+    },
+    "startDate": "2026-07-01T00:00:00.000Z",
+    "endDate": "2026-07-31T23:59:59.000Z",
+    "gracePeriodDays": 7,
+    "status": "active",
+    "createdAt": "2026-07-01T08:00:00.000Z"
+  }
+]
+```
+
+3. POST `/subscriptions/businesses`
+- Frontend helper: `subscriptionsApi.createBusinessSubscription(payload)`
+- Permission required: `subscription.manage`
+
+Sample request body
+```json
+{
+  "businessId": "biz-001",
+  "planId": "plan-monthly",
+  "startDate": "2026-07-01",
+  "endDate": "2026-07-31",
+  "gracePeriodDays": 7
+}
+```
+
+Sample response
+```json
+{
+  "id": "sub-001",
+  "businessId": "biz-001",
+  "planId": "plan-monthly",
+  "startDate": "2026-07-01T00:00:00.000Z",
+  "endDate": "2026-07-31T23:59:59.000Z",
+  "gracePeriodDays": 7,
+  "status": "active"
+}
+```
+
+4. POST `/subscriptions/:id/renew`
+- Frontend helper: `subscriptionsApi.renew(id, payload)`
+- Permission required: `subscription.manage`
+
+Sample request body
+```json
+{
+  "startDate": "2026-08-01",
+  "endDate": "2026-08-31",
+  "gracePeriodDays": 7
+}
+```
+
+Sample response
+```json
+{
+  "id": "sub-001",
+  "businessId": "biz-001",
+  "planId": "plan-monthly",
+  "startDate": "2026-08-01T00:00:00.000Z",
+  "endDate": "2026-08-31T23:59:59.000Z",
+  "gracePeriodDays": 7,
+  "status": "active"
+}
+```
+
+Subscription management notes
+- `subscriptionsApi.plans()` is the read path for the business subscription page.
+- `subscriptionsApi.business(businessId)` is the current-status path for the business subscription card or summary panel.
+- `subscriptionsApi.createBusinessSubscription(payload)` and `subscriptionsApi.renew(id, payload)` are management actions and require `subscription.manage`.
+- The admin-only page also uses `adminApi.subscriptions()`, `adminApi.renewSubscription()`, and `adminApi.updateSubscriptionStatus()`, but those are not part of the business route.
+
+====================================================================
+COMMON FRONTEND USAGE
+====================================================================
+
+Recommended import style
+```js
+import {
+  reportsApi,
+  usersApi,
+  rolesApi,
+  permissionsApi,
+  subscriptionsApi,
+} from '../../api/index.js'
+```
+
+Short usage sample
+```js
+const loadReports = async () => {
+  const daily = await reportsApi.dailySales({ date: '2026-07-06' })
+  const trends = await reportsApi.salesTrends({ dateFrom: '2026-01-01', dateTo: '2026-07-06' })
+  return { daily, trends }
+}
+
+const loadUsers = async (businessId) => {
+  const users = await usersApi.list({ businessId })
+  const roles = await rolesApi.list()
+  const permissions = await permissionsApi.list()
+  return { users, roles, permissions }
+}
+
+const loadSubscription = async (businessId) => {
+  const plans = await subscriptionsApi.plans()
+  const current = await subscriptionsApi.business(businessId)
+  return { plans, current }
+}
+```
+
+Final note
+- The Reports, Users, and Subscription business pages can all be backed by these modules immediately.
+- Reports is the analytics surface.
+- Users is the staff and access-control surface.
+- Subscription is the plan and renewal surface.
+- The examples above match the current backend controllers and service return shapes.

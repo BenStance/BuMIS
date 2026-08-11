@@ -1,0 +1,805 @@
+BuMIS Frontend Phase 02 - Admin Pages API Writeup
+
+Scope
+- Admin Users
+- Admin Roles
+- Admin Permissions
+- Audit Logs
+- System Settings
+
+Base URL
+- Postman collection: `http://localhost:3000/api`
+- Frontend client base: `/api` by default, or `VITE_API_BASE_URL` if set
+- Auth: all endpoints below require `Bearer <accessToken>`
+
+Frontend files
+- `frontend/src/api/users.api.js` exports `usersApi`
+- `frontend/src/api/roles.api.js` exports `rolesApi`
+- `frontend/src/api/permissions.api.js` exports `permissionsApi`
+- `frontend/src/api/audit.api.js` exports `auditApi`
+- `frontend/src/api/settings.api.js` exports `settingsApi`
+- `frontend/src/api/index.js` re-exports all API modules
+
+Frontend page files
+- `frontend/src/pages/admin/AdminUsersPage.jsx`
+- `frontend/src/pages/admin/AdminRolesPage.jsx`
+- `frontend/src/pages/admin/AdminPermissionsPage.jsx`
+- `frontend/src/pages/audit/AuditLogsPage.jsx` as used by `frontend/src/routes/AppRoutes.jsx` for admin audit access
+- `frontend/src/pages/admin/SystemSettingsPage.jsx`
+
+====================================================================
+1) ADMIN USERS
+====================================================================
+
+Purpose
+- Manage platform users, activation state, role assignment, permissions, and profile details.
+
+APIs to use
+
+1. GET `/users`
+- Frontend helper: `usersApi.list()`
+- Optional query parameter:
+  - `businessId`
+
+Sample request
+```http
+GET /api/users?businessId=1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+[
+  {
+    "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+    "fullName": "Jane Doe",
+    "email": "jane@example.com",
+    "phone": "+255700000001",
+    "position": "Accountant",
+    "status": "active",
+    "businessId": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+    "roleId": "r-001"
+  }
+]
+```
+
+2. GET `/users/:id`
+- Frontend helper: `usersApi.detail(id)`
+
+Sample request
+```http
+GET /api/users/8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+255700000001",
+  "position": "Accountant",
+  "status": "active",
+  "role": {
+    "id": "r-001",
+    "name": "Business Owner"
+  },
+  "business": {
+    "id": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+    "businessName": "BuMIS Demo Ltd"
+  }
+}
+```
+
+3. POST `/users`
+- Frontend helper: `usersApi.create(payload)`
+- Permission required: `user.create`
+
+Sample request body
+```json
+{
+  "businessId": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+  "roleId": "r-001",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+255700000001",
+  "position": "Accountant",
+  "password": "Secret123"
+}
+```
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "phone": "+255700000001",
+  "position": "Accountant",
+  "status": "active",
+  "businessId": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+  "roleId": "r-001"
+}
+```
+
+4. PATCH `/users/:id`
+- Frontend helper: `usersApi.update(id, payload)`
+- Permission required: `user.update`
+
+Sample request body
+```json
+{
+  "fullName": "Jane A. Doe",
+  "position": "Senior Accountant"
+}
+```
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "fullName": "Jane A. Doe",
+  "email": "jane@example.com",
+  "phone": "+255700000001",
+  "position": "Senior Accountant",
+  "status": "active"
+}
+```
+
+5. DELETE `/users/:id`
+- Frontend helper: `usersApi.remove(id)`
+- Permission required: `user.delete`
+
+Sample response
+```json
+{
+  "message": "User deleted"
+}
+```
+
+6. POST `/users/:id/activate`
+- Frontend helper: `usersApi.activate(id)`
+- Permission required: `user.activate`
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "status": "active"
+}
+```
+
+7. POST `/users/:id/deactivate`
+- Frontend helper: `usersApi.deactivate(id)`
+- Permission required: `user.deactivate`
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "status": "inactive"
+}
+```
+
+8. POST `/users/:id/role`
+- Frontend helper: `usersApi.assignRole(id, payload)`
+- Permission required: `user.update`
+
+Sample request body
+```json
+{
+  "roleId": "r-002"
+}
+```
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "roleId": "r-002"
+}
+```
+
+9. POST `/users/:id/permissions`
+- Frontend helper: `usersApi.assignPermissions(id, payload)`
+- Permission required: `user.update`
+
+Sample request body
+```json
+{
+  "permissionIds": [
+    "p-001",
+    "p-002",
+    "p-003"
+  ]
+}
+```
+
+Sample response
+```json
+{
+  "message": "Permissions assigned to user"
+}
+```
+
+10. GET `/users/:id/profile`
+- Frontend helper: `usersApi.profile(id)`
+
+Sample response
+```json
+{
+  "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+  "fullName": "Jane Doe",
+  "email": "jane@example.com",
+  "status": "active",
+  "permissions": [
+    "user.create",
+    "user.update"
+  ]
+}
+```
+
+====================================================================
+2) ADMIN ROLES
+====================================================================
+
+Purpose
+- Manage platform roles and define access structure across the system.
+
+APIs to use
+
+1. GET `/roles`
+- Frontend helper: `rolesApi.list()`
+
+Sample response
+```json
+[
+  {
+    "id": "r-001",
+    "name": "Platform Administrator",
+    "description": "Platform Administrator role",
+    "assignedUsers": 2,
+    "assignedPermissions": 24
+  }
+]
+```
+
+2. GET `/roles/:id`
+- Frontend helper: `rolesApi.detail(id)`
+
+Sample response
+```json
+{
+  "id": "r-001",
+  "name": "Platform Administrator",
+  "description": "Full platform access",
+  "permissions": [
+    {
+      "id": "p-001",
+      "code": "user.create",
+      "name": "Create user"
+    }
+  ],
+  "users": [
+    {
+      "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+      "fullName": "Jane Doe"
+    }
+  ]
+}
+```
+
+3. POST `/roles`
+- Frontend helper: `rolesApi.create(payload)`
+- Permission required: `role.create`
+
+Sample request body
+```json
+{
+  "name": "Finance Manager",
+  "description": "Handles finance and reporting"
+}
+```
+
+Sample response
+```json
+{
+  "id": "r-010",
+  "name": "Finance Manager",
+  "description": "Handles finance and reporting"
+}
+```
+
+4. PATCH `/roles/:id`
+- Frontend helper: `rolesApi.update(id, payload)`
+- Permission required: `role.update`
+
+Sample request body
+```json
+{
+  "description": "Updated role description"
+}
+```
+
+Sample response
+```json
+{
+  "id": "r-010",
+  "name": "Finance Manager",
+  "description": "Updated role description"
+}
+```
+
+5. DELETE `/roles/:id`
+- Frontend helper: `rolesApi.remove(id)`
+- Permission required: `role.delete`
+
+Sample response
+```json
+{
+  "message": "Role deleted"
+}
+```
+
+6. POST `/roles/:id/permissions`
+- Frontend helper: `rolesApi.assignPermissions(id, permissionIds)`
+- Permission required: `role.assign_permissions`
+
+Sample request body
+```json
+{
+  "permissionIds": [
+    "p-001",
+    "p-002"
+  ]
+}
+```
+
+Sample response
+```json
+{
+  "message": "Permissions assigned to role"
+}
+```
+
+====================================================================
+3) ADMIN PERMISSIONS
+====================================================================
+
+Purpose
+- Review and manage available permission codes across the platform.
+
+APIs to use
+
+1. GET `/permissions`
+- Frontend helper: `permissionsApi.list()`
+
+Sample response
+```json
+[
+  {
+    "id": "p-001",
+    "code": "user.create",
+    "name": "Create user",
+    "module": "users",
+    "description": "Allows creating new users"
+  }
+]
+```
+
+2. GET `/permissions/:id`
+- Frontend helper: `permissionsApi.detail(id)`
+
+Sample response
+```json
+{
+  "id": "p-001",
+  "code": "user.create",
+  "name": "Create user",
+  "module": "users",
+  "description": "Allows creating new users"
+}
+```
+
+3. POST `/permissions`
+- Frontend helper: `permissionsApi.create(payload)`
+- Permission required: `permission.create`
+
+Sample request body
+```json
+{
+  "code": "report.export",
+  "name": "Export reports",
+  "module": "reports",
+  "description": "Allows exporting reporting data"
+}
+```
+
+Sample response
+```json
+{
+  "id": "p-050",
+  "code": "report.export",
+  "name": "Export reports",
+  "module": "reports",
+  "description": "Allows exporting reporting data"
+}
+```
+
+4. PATCH `/permissions/:id`
+- Frontend helper: `permissionsApi.update(id, payload)`
+- Permission required: `permission.update`
+
+Sample request body
+```json
+{
+  "name": "Export financial reports"
+}
+```
+
+Sample response
+```json
+{
+  "id": "p-050",
+  "code": "report.export",
+  "name": "Export financial reports",
+  "module": "reports",
+  "description": "Allows exporting reporting data"
+}
+```
+
+5. DELETE `/permissions/:id`
+- Frontend helper: `permissionsApi.remove(id)`
+- Permission required: `permission.delete`
+
+Sample response
+```json
+{
+  "message": "Permission deleted"
+}
+```
+
+====================================================================
+4) AUDIT LOGS
+====================================================================
+
+Purpose
+- Trace platform activity, filter events, and summarize actions for admin oversight.
+
+APIs to use
+
+1. GET `/audit/logs`
+- Frontend helper: `auditApi.logs(params)`
+- Query parameters:
+  - `page`
+  - `limit`
+  - `businessId`
+  - `userId`
+  - `action`
+  - `entityName`
+  - `search`
+  - `dateFrom`
+  - `dateTo`
+
+Sample request
+```http
+GET /api/audit/logs?page=1&limit=20&action=login_success
+Authorization: Bearer <accessToken>
+```
+
+Sample response
+```json
+{
+  "items": [
+    {
+      "id": "a-log-001",
+      "businessId": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+      "userId": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+      "action": "login_success",
+      "entityName": "Auth",
+      "entityId": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+      "ipAddress": "127.0.0.1",
+      "userAgent": "Mozilla/5.0",
+      "metadata": {
+        "email": "jane@example.com",
+        "success": true
+      },
+      "user": {
+        "id": "8a1f6f86-2e89-4a8c-9c7f-6dce0d9a1001",
+        "fullName": "Jane Doe",
+        "email": "jane@example.com"
+      },
+      "createdAt": "2026-07-01T09:20:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
+```
+
+2. GET `/audit/summary`
+- Frontend helper: `auditApi.summary(params)`
+- Same optional filters as logs, but used for a compact summary card or chart.
+
+Sample response
+```json
+{
+  "total": 1,
+  "byAction": {
+    "login_success": 1
+  }
+}
+```
+
+Frontend note
+- Use `auditApi.logs()` for the table.
+- Use `auditApi.summary()` for action distribution charts or KPI cards.
+
+====================================================================
+5) SYSTEM SETTINGS
+====================================================================
+
+Purpose
+- Configure business-level settings, SMTP, invoice defaults, currency, and tax preferences.
+
+APIs to use
+
+1. GET `/settings`
+- Frontend helper: `settingsApi.all()`
+
+Sample response
+```json
+{
+  "business": {
+    "id": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+    "businessName": "BuMIS Demo Ltd",
+    "logo": null,
+    "address": "Dar es Salaam",
+    "phone": "+255700000000",
+    "email": "info@example.com",
+    "tin": "123-456-789",
+    "status": "active"
+  },
+  "settings": {
+    "business": {
+      "business.description": "Business management demo",
+      "business.website": "https://example.com"
+    },
+    "smtp": {
+      "smtp.host": "smtp.example.com",
+      "smtp.port": 587
+    },
+    "invoice": {
+      "invoice.number_prefix": "INV-",
+      "invoice.number_include_year": true
+    }
+  }
+}
+```
+
+2. GET `/settings/:category`
+- Frontend helper: `settingsApi.category(category)`
+- Categories:
+  - `business`
+  - `smtp`
+  - `invoice`
+  - `currency`
+  - `tax`
+
+Sample response
+```json
+{
+  "category": "invoice",
+  "settings": {
+    "invoice.number_prefix": "INV-",
+    "invoice.number_include_year": true,
+    "invoice.number_padding": 6
+  }
+}
+```
+
+3. PATCH `/settings/business`
+- Frontend helper: `settingsApi.updateBusiness(payload)`
+- Permission required: `settings.update`
+
+Sample request body
+```json
+{
+  "businessName": "BuMIS Demo Ltd",
+  "logo": "https://example.com/logo.png",
+  "address": "Dar es Salaam, Tanzania",
+  "phone": "+255700000000",
+  "email": "info@example.com",
+  "tin": "123-456-789",
+  "description": "Business management demo",
+  "website": "https://example.com"
+}
+```
+
+Sample response
+```json
+{
+  "business": {
+    "id": "1e8b7a8c-4d2d-4e8d-a11c-7f2e4f7d1011",
+    "businessName": "BuMIS Demo Ltd",
+    "logo": "https://example.com/logo.png",
+    "address": "Dar es Salaam, Tanzania",
+    "phone": "+255700000000",
+    "email": "info@example.com",
+    "tin": "123-456-789",
+    "status": "active"
+  },
+  "settings": {
+    "business": {
+      "business.description": "Business management demo",
+      "business.website": "https://example.com"
+    }
+  }
+}
+```
+
+4. PATCH `/settings/smtp`
+- Frontend helper: `settingsApi.updateSmtp(payload)`
+- Permission required: `settings.update`
+
+Sample request body
+```json
+{
+  "host": "smtp.example.com",
+  "port": 587,
+  "fromEmail": "no-reply@example.com",
+  "fromName": "BuMIS",
+  "username": "smtp-user",
+  "password": "smtp-password",
+  "encryption": "tls"
+}
+```
+
+Sample response
+```json
+{
+  "category": "smtp",
+  "settings": {
+    "smtp.host": "smtp.example.com",
+    "smtp.port": 587,
+    "smtp.from_email": "no-reply@example.com",
+    "smtp.from_name": "BuMIS",
+    "smtp.username": "smtp-user",
+    "smtp.password": "smtp-password",
+    "smtp.encryption": "tls"
+  }
+}
+```
+
+5. PATCH `/settings/invoice`
+- Frontend helper: `settingsApi.updateInvoice(payload)`
+- Permission required: `settings.update`
+
+Sample request body
+```json
+{
+  "prefix": "INV-",
+  "includeYear": true,
+  "padding": 6,
+  "walkInCustomerName": "Walk-in Customer",
+  "printLayout": "standard",
+  "footerNotes": "Thank you for your business.",
+  "paymentInstructions": "Pay within 7 days.",
+  "signatureArea": true
+}
+```
+
+Sample response
+```json
+{
+  "category": "invoice",
+  "settings": {
+    "invoice.number_prefix": "INV-",
+    "invoice.number_include_year": true,
+    "invoice.number_padding": 6,
+    "invoice.walk_in_customer_name": "Walk-in Customer",
+    "invoice.print_layout": "standard",
+    "invoice.footer_notes": "Thank you for your business.",
+    "invoice.payment_instructions": "Pay within 7 days.",
+    "invoice.signature_area": true
+  }
+}
+```
+
+6. PATCH `/settings/currency`
+- Frontend helper: `settingsApi.updateCurrency(payload)`
+- Permission required: `settings.update`
+
+Sample request body
+```json
+{
+  "name": "Tanzanian Shilling",
+  "symbol": "TZS",
+  "decimalPrecision": 0,
+  "thousandsSeparator": ",",
+  "decimalSeparator": "."
+}
+```
+
+Sample response
+```json
+{
+  "category": "currency",
+  "settings": {
+    "currency.name": "Tanzanian Shilling",
+    "currency.symbol": "TZS",
+    "currency.decimal_precision": 0,
+    "currency.thousands_separator": ",",
+    "currency.decimal_separator": "."
+  }
+}
+```
+
+7. PATCH `/settings/tax`
+- Frontend helper: `settingsApi.updateTax(payload)`
+- Permission required: `settings.update`
+
+Sample request body
+```json
+{
+  "enabled": true,
+  "rate": 18,
+  "name": "VAT",
+  "display": "inclusive"
+}
+```
+
+Sample response
+```json
+{
+  "category": "tax",
+  "settings": {
+    "tax.enabled": true,
+    "tax.rate": 18,
+    "tax.name": "VAT",
+    "tax.display": "inclusive"
+  }
+}
+```
+
+====================================================================
+COMMON FRONTEND USAGE
+====================================================================
+
+Recommended import style
+```js
+import {
+  usersApi,
+  rolesApi,
+  permissionsApi,
+  auditApi,
+  settingsApi,
+} from '../../api/index.js'
+```
+
+Short usage sample
+```js
+const loadAdminUsers = async () => {
+  const users = await usersApi.list()
+  return users
+}
+
+const loadAudit = async () => {
+  const [logs, summary] = await Promise.all([
+    auditApi.logs({ page: 1, limit: 20 }),
+    auditApi.summary(),
+  ])
+  return { logs, summary }
+}
+
+const saveBusinessSettings = async (payload) => {
+  return settingsApi.updateBusiness(payload)
+}
+```
+
+Final note
+- These five admin areas are now covered with the exact frontend modules, backend endpoints, and example payloads.
+- The Users, Roles, and Permissions pages are CRUD-heavy.
+- Audit Logs and Settings are mostly query/filter/update flows, so they should be straightforward to wire into tables, panels, and forms.
