@@ -7,6 +7,7 @@ import { InvoiceStatus, PaymentMethod } from '../../common/enums/domain.enums';
 import { SalesInvoiceItem } from './sales-invoice-item.entity';
 import { InventoryTransaction } from './inventory-transaction.entity';
 import { LedgerEntry } from './ledger-entry.entity';
+import { DocumentStatus, PaymentStatus } from '../../common/enums/domain.enums';
 
 @Entity({ name: 'SalesInvoices' })
 @Index('UQ_SalesInvoices_BusinessId_InvoiceNumber', ['businessId', 'invoiceNumber'], { unique: true })
@@ -55,6 +56,12 @@ export class SalesInvoice extends BaseUuidEntity {
 
   @Column({ name: 'Status', type: 'nvarchar', length: 30, default: InvoiceStatus.DRAFT })
   status!: InvoiceStatus;
+
+  @Column({ name: 'DocumentStatus', type: 'nvarchar', length: 30, default: DocumentStatus.DRAFT })
+  documentStatus!: DocumentStatus;
+
+  @Column({ name: 'PaymentStatus', type: 'nvarchar', length: 30, default: PaymentStatus.UNPAID })
+  paymentStatus!: PaymentStatus;
 
   @Column({ name: 'Notes', type: 'nvarchar', length: 500, nullable: true })
   notes?: string;

@@ -24,6 +24,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ShoppingCart,
+  Landmark,
 } from 'lucide-react';
 import { navigateTo } from '../../utils/navigation.js';
 import { NAV_GROUPS, ROLES } from '../../utils/constants.js';
@@ -33,6 +35,9 @@ import logoImage from '../../assets/images/logo.png';
 const ICONS = {
   dashboard: LayoutDashboard,
   invoices: ReceiptText,
+  purchaseInvoices: ShoppingCart,
+  salesReceipts: ReceiptText,
+  paymentVouchers: Landmark,
   reports: BarChart3,
   audit: ShieldCheck,
   settings: Settings,
@@ -147,6 +152,9 @@ function buildSections(roleName) {
       title: NAV_GROUPS.operations,
       items: [
         { to: '/invoices', label: 'Invoices', icon: 'invoices' },
+        { to: '/purchase-invoices', label: 'Purchase Invoices', icon: 'purchaseInvoices' },
+        { to: '/sales-receipts', label: 'Sales Receipts', icon: 'salesReceipts' },
+        { to: '/payment-vouchers', label: 'Payment Vouchers', icon: 'paymentVouchers' },
         { to: '/products', label: 'Products', icon: 'products' },
         { to: '/categories', label: 'Categories', icon: 'categories' },
         { to: '/customers', label: 'Customers', icon: 'customers' },
@@ -177,6 +185,9 @@ function buildSections(roleName) {
       title: NAV_GROUPS.operations,
       items: [
         { to: '/invoices', label: 'Invoices', icon: 'invoices' },
+        { to: '/purchase-invoices', label: 'Purchase Invoices', icon: 'purchaseInvoices' },
+        { to: '/sales-receipts', label: 'Sales Receipts', icon: 'salesReceipts' },
+        { to: '/payment-vouchers', label: 'Payment Vouchers', icon: 'paymentVouchers' },
         { to: '/products', label: 'Products', icon: 'products' },
         { to: '/customers', label: 'Customers', icon: 'customers' },
         { to: '/vendors', label: 'Vendors', icon: 'vendors' },

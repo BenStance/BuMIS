@@ -16,6 +16,9 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
+import { PurchaseInvoicesModule } from './modules/purchase-invoices/purchase-invoices.module';
+import { SalesReceiptsModule } from './modules/sales-receipts/sales-receipts.module';
+import { PaymentVouchersModule } from './modules/payment-vouchers/payment-vouchers.module';
 import { LedgerModule } from './modules/ledger/ledger.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -44,6 +47,9 @@ import { AdminModule } from './modules/admin/admin.module';
     VendorsModule,
     InventoryModule,
     InvoicesModule,
+    PurchaseInvoicesModule,
+    SalesReceiptsModule,
+    PaymentVouchersModule,
     LedgerModule,
     ReportsModule,
     DashboardModule,

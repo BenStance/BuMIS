@@ -13,6 +13,12 @@ import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.jsx'
 import { InvoiceListPage } from '../pages/invoices/InvoiceListPage.jsx'
 import { InvoiceDetailsPage } from '../pages/invoices/InvoiceDetailsPage.jsx'
 import { InvoiceCreatePage } from '../pages/invoices/InvoiceCreatePage.jsx'
+import { PurchaseInvoicesPage } from '../pages/purchase-invoices/PurchaseInvoicesPage.jsx'
+import { PurchaseInvoiceCreatePage } from '../pages/purchase-invoices/PurchaseInvoiceCreatePage.jsx'
+import { SalesReceiptsPage } from '../pages/sales-receipts/SalesReceiptsPage.jsx'
+import { SalesReceiptCreatePage } from '../pages/sales-receipts/SalesReceiptCreatePage.jsx'
+import { PaymentVouchersPage } from '../pages/payment-vouchers/PaymentVouchersPage.jsx'
+import { PaymentVoucherCreatePage } from '../pages/payment-vouchers/PaymentVoucherCreatePage.jsx'
 import { ReportsPage } from '../pages/reports/ReportsPage.jsx'
 import { SettingsPage } from '../pages/settings/SettingsPage.jsx'
 import { AdminDashboardPage } from '../pages/admin/AdminDashboardPage.jsx'
@@ -130,6 +136,18 @@ function getPageForPath(path, roleName) {
       return getInvoicesForRole(roleName)
     case '/invoices/new':
       return <InvoiceCreatePage />
+    case '/purchase-invoices':
+      return <PurchaseInvoicesPage />
+    case '/purchase-invoices/new':
+      return <PurchaseInvoiceCreatePage />
+    case '/sales-receipts':
+      return <SalesReceiptsPage />
+    case '/sales-receipts/new':
+      return <SalesReceiptCreatePage />
+    case '/payment-vouchers':
+      return <PaymentVouchersPage />
+    case '/payment-vouchers/new':
+      return <PaymentVoucherCreatePage />
     case '/settings':
       return getSettingsForRole(roleName)
     case '/reports':
@@ -172,6 +190,27 @@ function getPageForPath(path, roleName) {
     default:
       if (path.startsWith('/invoices/') && path !== '/invoices/new') {
         return <InvoiceDetailsPage />
+      }
+
+      if (path.startsWith('/purchase-invoices/') && path !== '/purchase-invoices/new') {
+        {
+          const purchaseMatch = path.match(/^\/purchase-invoices\/([^/]+)$/)
+          return <PurchaseInvoicesPage documentId={purchaseMatch?.[1] || null} />
+        }
+      }
+
+      if (path.startsWith('/sales-receipts/') && path !== '/sales-receipts/new') {
+        {
+          const receiptMatch = path.match(/^\/sales-receipts\/([^/]+)$/)
+          return <SalesReceiptsPage documentId={receiptMatch?.[1] || null} />
+        }
+      }
+
+      if (path.startsWith('/payment-vouchers/') && path !== '/payment-vouchers/new') {
+        {
+          const voucherMatch = path.match(/^\/payment-vouchers\/([^/]+)$/)
+          return <PaymentVouchersPage documentId={voucherMatch?.[1] || null} />
+        }
       }
 
       return null

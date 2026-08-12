@@ -1,4 +1,4 @@
-import { getAccessToken } from '../utils/storage.js'
+import { getAccessToken, getRefreshToken, setAccessToken } from '../utils/storage.js'
 import { navigateTo } from '../utils/navigation.js'
 
 const defaultBaseUrl = '/api'
@@ -30,12 +30,44 @@ function isFormDataLike(value) {
   return Object.prototype.toString.call(value) === '[object FormData]'
 }
 
+async function tryRefreshAccessToken(baseUrl) {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    return null
+  }
+
+  try {
+    const response = await fetch(`${baseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ refreshToken }),
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const data = await response.json()
+    if (data?.accessToken) {
+      setAccessToken(data.accessToken)
+      return data.accessToken
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 export async function request(path, options = {}) {
   const {
     method = 'GET',
     body,
     headers = {},
     auth = true,
+    retryOnAuthFailure = true,
   } = options
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || defaultBaseUrl
@@ -74,6 +106,14 @@ export async function request(path, options = {}) {
     const error = new Error(Array.isArray(message) ? message.join(', ') : message)
     error.status = response.status
     error.data = data
+
+    if (response.status === 401 && auth && retryOnAuthFailure && !path.startsWith('/auth/refresh')) {
+      const refreshedToken = await tryRefreshAccessToken(baseUrl)
+      if (refreshedToken) {
+        return request(path, { ...options, retryOnAuthFailure: false })
+      }
+    }
+
     if (
       response.status === 403 &&
       typeof data === 'object' &&

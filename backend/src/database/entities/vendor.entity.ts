@@ -31,6 +31,9 @@ export class Vendor extends BaseUuidEntity {
   @Column({ name: 'Notes', type: 'nvarchar', length: 255, nullable: true })
   notes?: string;
 
+  @Column({ name: 'Balance', type: 'decimal', precision: 18, scale: 2, default: 0 })
+  balance!: number;
+
   @Column({ name: 'Status', type: 'nvarchar', length: 30, default: RecordStatus.ACTIVE })
   status!: RecordStatus;
 

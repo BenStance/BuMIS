@@ -97,6 +97,8 @@ export class SettingsService {
     await this.upsertSetting(businessId, 'invoice.footer_notes', dto.footerNotes);
     await this.upsertSetting(businessId, 'invoice.payment_instructions', dto.paymentInstructions);
     await this.upsertSetting(businessId, 'invoice.signature_area', dto.signatureArea);
+    await this.upsertSetting(businessId, 'invoice.auto_purchase_payment', dto.autoPurchasePayment);
+    await this.upsertSetting(businessId, 'invoice.auto_sales_receipt', dto.autoSalesReceipt);
     await this.auditService.record({
       businessId,
       userId: currentUser.sub,

@@ -20,11 +20,24 @@ export class LedgerEntry extends BaseUuidEntity {
   invoiceId?: string;
 
   @Index()
+  @Column({ name: 'SourceId', type: 'uniqueidentifier', nullable: true })
+  sourceId?: string;
+
+  @Column({ name: 'SourceNumber', type: 'nvarchar', length: 100, nullable: true })
+  sourceNumber?: string;
+
+  @Column({ name: 'PostingBatchId', type: 'nvarchar', length: 100, nullable: true })
+  postingBatchId?: string;
+
+  @Index()
   @Column({ name: 'CreatedByUserId', type: 'uniqueidentifier', nullable: true })
   createdByUserId?: string;
 
   @Column({ name: 'TransactionDate', type: 'datetime2', default: () => 'GETDATE()' })
   transactionDate!: Date;
+
+  @Column({ name: 'PostingDate', type: 'datetime2', default: () => 'GETDATE()' })
+  postingDate!: Date;
 
   @Column({ name: 'SourceType', type: 'nvarchar', length: 30 })
   sourceType!: LedgerEntrySourceType;
@@ -40,6 +53,15 @@ export class LedgerEntry extends BaseUuidEntity {
 
   @Column({ name: 'Credit', type: 'decimal', precision: 18, scale: 2, default: 0 })
   credit!: number;
+
+  @Column({ name: 'IsReversal', type: 'bit', default: false })
+  isReversal!: boolean;
+
+  @Column({ name: 'ReversalOfEntryId', type: 'uniqueidentifier', nullable: true })
+  reversalOfEntryId?: string;
+
+  @Column({ name: 'ReversalBatchId', type: 'nvarchar', length: 100, nullable: true })
+  reversalBatchId?: string;
 
   @ManyToOne(() => LedgerAccount, (account) => account.ledgerEntries, { onDelete: 'NO ACTION' })
   @JoinColumn({ name: 'AccountId' })

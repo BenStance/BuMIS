@@ -13,8 +13,10 @@ import { AuditLog } from '../../database/entities/audit-log.entity';
 import { User } from '../../database/entities/user.entity';
 import {
   AuditAction,
+  DocumentStatus,
   InvoiceStatus,
   InventoryTransactionType,
+  PaymentStatus,
   PaymentMethod,
   RecordStatus,
 } from '../../common/enums/domain.enums';
@@ -161,12 +163,8 @@ export class InvoicesService {
 
       const calculations = this.calculateInvoiceTotals(products, mergedItems, dto, settings);
       const invoiceNumber = await this.generateInvoiceNumber(manager, businessId, settings);
-      const status = dto.isDraft
-        ? InvoiceStatus.DRAFT
-        : dto.paymentMethod === PaymentMethod.CASH
-          ? InvoiceStatus.PAID
-          : InvoiceStatus.POSTED;
-      const amountPaid = dto.isDraft ? 0 : dto.paymentMethod === PaymentMethod.CASH ? calculations.totalAmount : 0;
+      const status = dto.isDraft ? InvoiceStatus.DRAFT : InvoiceStatus.POSTED;
+      const amountPaid = 0;
 
       const invoiceRepository = manager.getRepository(SalesInvoice);
       const invoice = (await invoiceRepository.save(
@@ -185,6 +183,8 @@ export class InvoicesService {
           amountPaid,
           balance: calculations.totalAmount - amountPaid,
           status,
+          documentStatus: dto.isDraft ? DocumentStatus.DRAFT : DocumentStatus.POSTED,
+          paymentStatus: PaymentStatus.UNPAID,
           notes: dto.notes,
         } as any),
       )) as unknown as SalesInvoice;
@@ -212,6 +212,10 @@ export class InvoicesService {
       if (!dto.isDraft) {
         await this.applyStockMovements(manager, businessId, invoice, mergedItems, products, currentUser);
         await this.ledgerService.postInvoiceEntries(manager, invoice, currentUser);
+        if (customer) {
+          customer.balance = Number(customer.balance ?? 0) + Number(invoice.totalAmount ?? 0);
+          await manager.getRepository(Customer).save(customer);
+        }
       }
 
       await manager.getRepository(AuditLog).save(
@@ -294,6 +298,8 @@ export class InvoicesService {
       invoice.totalAmount = calculations.totalAmount;
       invoice.amountPaid = 0;
       invoice.balance = calculations.totalAmount;
+      invoice.documentStatus = DocumentStatus.DRAFT;
+      invoice.paymentStatus = PaymentStatus.UNPAID;
 
       const invoiceItemRepository = manager.getRepository(SalesInvoiceItem);
       await invoiceItemRepository.delete({ invoiceId: invoice.id });
@@ -345,6 +351,11 @@ export class InvoicesService {
       if (invoice.status !== InvoiceStatus.DRAFT) {
         await this.restoreInventory(manager, invoice, currentUser);
         await this.ledgerService.reverseInvoiceEntries(manager, invoice, currentUser);
+        const customer = await manager.getRepository(Customer).findOne({ where: { id: invoice.customerId } });
+        if (customer) {
+          customer.balance = Math.max(Number(customer.balance ?? 0) - Number(invoice.totalAmount ?? 0), 0);
+          await manager.getRepository(Customer).save(customer);
+        }
       }
 
       invoice.status = InvoiceStatus.CANCELLED;
@@ -659,6 +670,8 @@ export class InvoicesService {
       customer: invoice.customer ? { id: invoice.customer.id, fullName: invoice.customer.fullName } : null,
       createdBy: invoice.createdBy ? { id: invoice.createdBy.id, fullName: invoice.createdBy.fullName } : null,
       paymentMethod: invoice.paymentMethod ?? null,
+      documentStatus: invoice.documentStatus ?? invoice.status,
+      paymentStatus: invoice.paymentStatus ?? PaymentStatus.UNPAID,
       subtotal: Number(invoice.subtotal ?? 0),
       discountTotal: Number(invoice.discountTotal ?? 0),
       taxTotal: Number(invoice.taxTotal ?? 0),
@@ -719,6 +732,8 @@ export class InvoicesService {
       cancelledAt: invoice.cancelledAt ?? null,
       cancellationReason: invoice.cancellationReason ?? null,
       paymentMethod: invoice.paymentMethod ?? null,
+      documentStatus: invoice.documentStatus ?? invoice.status,
+      paymentStatus: invoice.paymentStatus ?? PaymentStatus.UNPAID,
     };
   }
 

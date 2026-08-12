@@ -117,6 +117,8 @@ export function SettingsPage() {
     footerNotes: '',
     paymentInstructions: '',
     signatureArea: true,
+    autoPurchasePayment: false,
+    autoSalesReceipt: false,
   });
   const [currencySettings, setCurrencySettings] = useState({
     name: 'Tanzanian Shilling',
@@ -167,6 +169,8 @@ export function SettingsPage() {
         footerNotes: invoice['invoice.footer_notes'] || '',
         paymentInstructions: invoice['invoice.payment_instructions'] || '',
         signatureArea: invoice['invoice.signature_area'] ?? true,
+        autoPurchasePayment: invoice['invoice.auto_purchase_payment'] ?? false,
+        autoSalesReceipt: invoice['invoice.auto_sales_receipt'] ?? false,
       });
 
       // Currency
@@ -215,7 +219,7 @@ export function SettingsPage() {
     const { name, value, type } = e.target;
     setInvoiceSettings((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? value : value,
+      [name]: type === 'checkbox' ? Boolean(value) : value,
     }));
   };
 
@@ -265,6 +269,8 @@ export function SettingsPage() {
         footerNotes: invoiceSettings.footerNotes,
         paymentInstructions: invoiceSettings.paymentInstructions,
         signatureArea: invoiceSettings.signatureArea,
+        autoPurchasePayment: invoiceSettings.autoPurchasePayment,
+        autoSalesReceipt: invoiceSettings.autoSalesReceipt,
       });
       setSuccessMessage('Invoice settings saved successfully!');
       await fetchData();
@@ -558,6 +564,54 @@ export function SettingsPage() {
                     value={invoiceSettings.paymentInstructions}
                     onChange={handleInvoiceChange}
                   />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-4">
+                      <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
+                        Auto Purchase Payment
+                      </label>
+                      <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                        When enabled, the system can auto-handle purchase payment after invoice posting.
+                      </p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="autoPurchasePayment"
+                          checked={invoiceSettings.autoPurchasePayment}
+                          onChange={(e) =>
+                            setInvoiceSettings({
+                              ...invoiceSettings,
+                              autoPurchasePayment: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 rounded border-[var(--color-panel-border)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)]"
+                        />
+                        <span className="text-sm text-[var(--color-text-secondary)]">Enabled</span>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-4">
+                      <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
+                        Auto Sales Receipt
+                      </label>
+                      <p className="mt-1 text-xs text-[var(--color-text-tertiary)]">
+                        When enabled, the system can auto-generate a receipt after invoice posting.
+                      </p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="autoSalesReceipt"
+                          checked={invoiceSettings.autoSalesReceipt}
+                          onChange={(e) =>
+                            setInvoiceSettings({
+                              ...invoiceSettings,
+                              autoSalesReceipt: e.target.checked,
+                            })
+                          }
+                          className="h-4 w-4 rounded border-[var(--color-panel-border)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)]"
+                        />
+                        <span className="text-sm text-[var(--color-text-secondary)]">Enabled</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex justify-end">
                   <button

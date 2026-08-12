@@ -42,6 +42,25 @@ export enum InvoiceStatus {
   CANCELLED = 'cancelled',
 }
 
+export enum DocumentStatus {
+  DRAFT = 'draft',
+  POSTED = 'posted',
+  CANCELLED = 'cancelled',
+  REVERSED = 'reversed',
+}
+
+export enum PaymentStatus {
+  UNPAID = 'unpaid',
+  PARTIALLY_PAID = 'partially_paid',
+  PAID = 'paid',
+}
+
+export enum PaymentDocumentStatus {
+  DRAFT = 'draft',
+  POSTED = 'posted',
+  VOIDED = 'voided',
+}
+
 export enum PaymentMethod {
   CASH = 'cash',
   CREDIT = 'credit',
@@ -51,6 +70,9 @@ export enum InventoryTransactionType {
   STOCK_IN = 'stock_in',
   STOCK_OUT = 'stock_out',
   ADJUSTMENT = 'adjustment',
+  PURCHASE_INVOICE = 'purchase_invoice',
+  PURCHASE_INVOICE_REVERSAL = 'purchase_invoice_reversal',
+  SALES_INVOICE_REVERSAL = 'sales_invoice_reversal',
 }
 
 export enum LedgerAccountType {
@@ -65,6 +87,14 @@ export enum LedgerEntrySourceType {
   INVOICE = 'invoice',
   INVENTORY = 'inventory',
   MANUAL = 'manual',
+  SALES_RECEIPT = 'sales_receipt',
+  PURCHASE_INVOICE = 'purchase_invoice',
+  PAYMENT_VOUCHER = 'payment_voucher',
+  SALES_INVOICE_REVERSAL = 'sales_invoice_reversal',
+  PURCHASE_INVOICE_REVERSAL = 'purchase_invoice_reversal',
+  RECEIPT_REVERSAL = 'receipt_reversal',
+  VOUCHER_REVERSAL = 'voucher_reversal',
+  MANUAL_JOURNAL = 'manual_journal',
 }
 
 export enum OtpPurpose {

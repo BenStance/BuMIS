@@ -28,6 +28,7 @@ import {
   Cell,
 } from 'recharts';
 import { reportsApi } from '../../api/index.js';
+import { purchaseInvoicesApi, salesReceiptsApi, paymentVouchersApi } from '../../api/index.js';
 import PageContainer from '../../layouts/PageContainer.jsx';
 import { useThemeContext } from '../../context/ThemeContext.jsx';
 
@@ -134,6 +135,9 @@ export function ReportsPage() {
   const [invoiceReports, setInvoiceReports] = useState([]);
   const [invoiceTotal, setInvoiceTotal] = useState(0);
   const [salesTrends, setSalesTrends] = useState([]);
+  const [purchaseInvoiceReports, setPurchaseInvoiceReports] = useState([]);
+  const [salesReceiptReports, setSalesReceiptReports] = useState([]);
+  const [paymentVoucherReports, setPaymentVoucherReports] = useState([]);
 
   // Filters
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
@@ -166,9 +170,12 @@ export function ReportsPage() {
           dateFrom: trendDateFrom,
           dateTo: trendDateTo,
         }),
+        purchaseInvoicesApi.list({ page: 1, limit: 10, status: invoiceStatus || undefined }),
+        salesReceiptsApi.list({ page: 1, limit: 10, status: invoiceStatus || undefined }),
+        paymentVouchersApi.list({ page: 1, limit: 10, status: invoiceStatus || undefined }),
       ]);
 
-      const [daily, monthly, annual, products, inventory, invoices, trends] = results;
+      const [daily, monthly, annual, products, inventory, invoices, trends, purchases, receipts, vouchers] = results;
 
       if (daily.status === 'fulfilled') setDailySales(daily.value);
       if (monthly.status === 'fulfilled') setMonthlySales(monthly.value);
@@ -180,6 +187,9 @@ export function ReportsPage() {
         setInvoiceTotal(invoices.value.total || 0);
       }
       if (trends.status === 'fulfilled') setSalesTrends(trends.value.items || []);
+      if (purchases.status === 'fulfilled') setPurchaseInvoiceReports(purchases.value.items || []);
+      if (receipts.status === 'fulfilled') setSalesReceiptReports(receipts.value.items || []);
+      if (vouchers.status === 'fulfilled') setPaymentVoucherReports(vouchers.value.items || []);
 
       const firstError = results.find((result) => result.status === 'rejected');
       if (firstError) {
@@ -212,6 +222,48 @@ export function ReportsPage() {
     name: item.productName,
     value: item.revenue,
   }));
+
+  const DocumentTable = ({ title, rows, numberKey, primaryKey, amountKey, dateKey, statusKey, emptyLabel }) => (
+    <div className="rounded-2xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] p-5 shadow-sm">
+      <h3 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">{title}</h3>
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse rounded bg-[var(--color-panel-border)]" />
+          ))}
+        </div>
+      ) : rows.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-[var(--color-panel-border)] text-[var(--color-text-secondary)]">
+              <tr>
+                <th className="pb-2 pr-4 font-medium">{title.replace(/^Recent\s+/i, '')} #</th>
+                <th className="pb-2 pr-4 font-medium">Party</th>
+                <th className="pb-2 pr-4 font-medium">Amount</th>
+                <th className="pb-2 pr-4 font-medium">Status</th>
+                <th className="pb-2 font-medium">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className="border-b border-[var(--color-panel-border)] last:border-0">
+                  <td className="py-2 pr-4 font-mono text-xs text-[var(--color-text-primary)]">{row[numberKey]}</td>
+                  <td className="py-2 pr-4 text-[var(--color-text-secondary)]">
+                    {row[primaryKey]?.name || row[primaryKey]?.fullName || '-'}
+                  </td>
+                  <td className="py-2 pr-4 text-[var(--color-text-secondary)]">{formatCurrency(row[amountKey])}</td>
+                  <td className="py-2 pr-4"><StatusBadge status={row[statusKey]} /></td>
+                  <td className="py-2 text-[var(--color-text-secondary)]">{row[dateKey] ? new Date(row[dateKey]).toLocaleDateString() : '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="py-8 text-center text-[var(--color-text-secondary)]">{emptyLabel}</p>
+      )}
+    </div>
+  )
 
   const COLORS = [primaryColor, secondaryColor, '#8b5cf6', '#f59e0b, #3b82f6'];
 
@@ -530,6 +582,39 @@ export function ReportsPage() {
             ) : (
               <p className="py-8 text-center text-[var(--color-text-secondary)]">No invoices found.</p>
             )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <DocumentTable
+              title="Recent Purchase Invoices"
+              rows={purchaseInvoiceReports.slice(0, 5)}
+              numberKey="purchaseInvoiceNumber"
+              primaryKey="vendor"
+              amountKey="totalAmount"
+              statusKey="documentStatus"
+              dateKey="invoiceDate"
+              emptyLabel="No purchase invoices found."
+            />
+            <DocumentTable
+              title="Recent Sales Receipts"
+              rows={salesReceiptReports.slice(0, 5)}
+              numberKey="receiptNumber"
+              primaryKey="customer"
+              amountKey="amount"
+              statusKey="status"
+              dateKey="paymentDate"
+              emptyLabel="No sales receipts found."
+            />
+            <DocumentTable
+              title="Recent Payment Vouchers"
+              rows={paymentVoucherReports.slice(0, 5)}
+              numberKey="voucherNumber"
+              primaryKey="vendor"
+              amountKey="amount"
+              statusKey="status"
+              dateKey="paymentDate"
+              emptyLabel="No payment vouchers found."
+            />
           </div>
         </>
       )}

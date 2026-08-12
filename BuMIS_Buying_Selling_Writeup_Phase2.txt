@@ -1,0 +1,395 @@
+BuMIS Buying and Selling Workflow Writeup
+Date: August 12, 2026
+
+Purpose
+
+This document explains how the current project operates today for buying, selling, stock in, and stock out.
+It also describes the changes needed for phase two based on the requested new workflow:
+
+1. Buying should create a purchase invoice, but it should not be marked as paid automatically.
+2. Payment should be a separate action and must be recorded in the ledger.
+3. There should be a settings option for auto payment after invoice creation.
+4. Selling should follow the same pattern:
+   - invoice first,
+   - payment separately,
+   - optional auto payment based on settings.
+5. The system should add a Purchase Invoice and Payment Voucher.
+6. The selling invoice already exists, but Receipt generation must be added.
+
+1. Current System Overview
+
+BuMIS is currently built as a sales-focused business management system.
+The existing codebase centers on:
+
+- Sales invoice creation
+- Inventory stock updates
+- Ledger posting for sales invoices
+- Product, customer, vendor, and inventory management
+- Business settings and invoice formatting
+
+The current design supports multi-tenant business data through a BusinessId field across most operational tables.
+The current implementation is strongest on selling, stock reduction, and bookkeeping for sales transactions.
+
+2. What Exists Today For Selling
+
+The current sales flow is implemented in the backend invoice module and supported by the frontend invoice workspace.
+
+2.1 Sales Invoice Creation
+
+The current invoice creation flow is in the backend invoices service.
+When a sales invoice is created:
+
+- A unique invoice number is generated using settings such as prefix, year inclusion, and padding.
+- The invoice is saved with header values such as:
+  - customer
+  - invoice date
+  - due date
+  - payment method
+  - subtotal
+  - discount total
+  - tax total
+  - total amount
+  - amount paid
+  - balance
+  - status
+- Invoice items are saved separately.
+- The invoice can be created as a draft or as a posted transaction.
+
+Important current behavior:
+
+- If `isDraft = true`, the invoice is saved as a draft and does not affect stock or ledger.
+- If `isDraft = false`, the system posts the invoice immediately and performs stock and ledger updates.
+
+2.2 Payment Behavior For Sales
+
+The current payment logic is mixed into invoice creation.
+
+- Payment methods currently available are `cash` and `credit`.
+- If the invoice is created with `cash`, the invoice is immediately marked as `paid`.
+- If the invoice is created with `credit`, the invoice is marked as `posted`.
+- For cash invoices, `amountPaid` is set to the full invoice total automatically.
+- For credit invoices, `amountPaid` is zero and `balance` equals the full total.
+
+This means the system does not currently have a separate payment transaction for sales.
+Payment is not recorded as an independent operation in the ledger.
+
+2.3 Stock Out On Sales
+
+When a sales invoice is not a draft, the system reduces inventory automatically.
+
+For each item on the invoice:
+
+- The product current stock is checked before the invoice is saved.
+- If stock is insufficient, invoice creation fails.
+- If stock is available, product stock is reduced by the sold quantity.
+- An inventory transaction is recorded with type `stock_out`.
+- The inventory transaction stores:
+  - previous stock
+  - new stock
+  - quantity
+  - invoice reference
+  - product reference
+  - user who created it
+
+This means stock out is currently tied directly to sales invoice posting.
+
+2.4 Ledger Posting On Sales
+
+When the invoice is posted, the system creates ledger entries automatically.
+
+Current ledger behavior for sales:
+
+- If payment method is cash, the debit is posted to Cash.
+- If payment method is credit, the debit is posted to Accounts Receivable.
+- Sales Revenue is credited.
+- Discounts are posted to the Discounts expense account.
+- Tax is posted to Tax Payable when tax exists.
+
+This is good sales accounting for the current model, but payment itself is not yet separated from invoice creation.
+The invoice creation event is doing both:
+
+- sales posting
+- stock movement
+- accounting posting
+
+2.5 Invoice Cancellation
+
+If a non-draft invoice is cancelled:
+
+- stock is restored
+- reversal ledger entries are created
+- the invoice status becomes cancelled
+- a cancellation audit log is recorded
+
+Draft invoices can be cancelled without reversing stock or ledger, because they have not been posted yet.
+
+2.6 Invoice Printing
+
+The frontend already supports invoice print output.
+The invoice details page and print preview show:
+
+- invoice number
+- customer
+- items
+- totals
+- amount paid
+- balance
+- payment method
+
+So the current sales invoice can already be printed as a customer-facing invoice document.
+
+3. What Exists Today For Buying / Stock In
+
+This is the most important gap in the current system.
+
+3.1 Buying Is Not A Real Purchase Module Yet
+
+There is no dedicated purchase invoice module in the backend.
+There is no purchase invoice entity, purchase invoice items entity, purchase payment entity, or payment voucher entity.
+
+The current system only has:
+
+- vendors as master data
+- inventory stock in as a manual stock movement
+- vendor profile pages that show purchase history placeholders
+
+So at the moment, buying is not a true financial workflow.
+It is only a manual stock-in operation.
+
+3.2 Manual Stock In
+
+The inventory module has a stock-in action.
+
+Current stock-in behavior:
+
+- A product is selected
+- Quantity is entered
+- Unit cost is optional
+- Vendor is optional
+- Reference number is optional
+- Stock in date is optional
+- Remarks are optional
+- Product current stock is increased
+- An inventory transaction of type `stock_in` is created
+
+Important:
+
+- Stock in currently updates inventory only.
+- It does not create a purchase invoice.
+- It does not create a payment record.
+- It does not create a voucher.
+- It does not create ledger entries.
+
+So buying is not yet connected to accounting in the same way that sales is connected.
+
+3.3 Vendor Module Today
+
+The vendor module is only a supplier master-data module.
+
+Current vendor behavior:
+
+- create vendor
+- update vendor
+- archive vendor
+- view vendor profile
+
+The vendor profile includes `purchaseHistory`, but it is currently an empty placeholder.
+That confirms there is no actual vendor purchase transaction history being stored yet.
+
+4. Current Settings Behavior
+
+System settings already exist, but they do not yet support automatic payment rules.
+
+Current invoice-related settings include:
+
+- invoice prefix
+- invoice number padding
+- include year in invoice number
+- walk-in customer name
+- print layout
+- footer notes
+- payment instructions
+- signature area
+
+Current tax settings include:
+
+- tax enabled
+- tax rate
+- tax name
+- tax display mode
+
+Current currency settings include:
+
+- currency name
+- symbol
+- decimal precision
+- separators
+
+What is missing in settings for phase two:
+
+- auto payment on invoice creation
+- auto payment toggle for purchase invoices
+- auto payment toggle for sales invoices
+- payment mode defaults
+- purchase invoice numbering settings
+- receipt numbering settings
+- voucher numbering settings
+
+5. What The Requirements Document Suggests
+
+The requirements document already points toward some of the future direction.
+It mentions future features such as:
+
+- purchase management
+- receipt printing
+- advanced accounting and financial reporting
+
+It also states that sales invoice generation and automatic ledger entries are part of the original design.
+That means your phase-two request fits the long-term direction of the project.
+
+6. Recommended Phase Two Workflow
+
+This section describes the target operation you asked for.
+
+6.1 Buying Flow
+
+The buying process should be split into two separate actions:
+
+Step 1: Purchase Invoice
+
+- User creates a purchase invoice
+- Invoice is saved in the system
+- Invoice is recorded in the ledger
+- Invoice is not automatically marked as paid
+- Stock in may happen here or on posting, depending on the chosen business rule
+
+Step 2: Payment Voucher
+
+- User records payment separately
+- Payment is linked to the purchase invoice
+- Payment is recorded in the ledger
+- The purchase balance is reduced
+- The invoice status updates based on payment amount
+
+Optional auto payment:
+
+- If settings say auto payment is enabled, then once the purchase invoice is created, the payment voucher is created automatically too
+- If settings say auto payment is disabled, the invoice stays unpaid until the payment voucher is posted manually
+
+6.2 Selling Flow
+
+Selling should also be split into two separate actions:
+
+Step 1: Sales Invoice
+
+- User creates sales invoice
+- Invoice is recorded
+- Ledger entries for the invoice are created
+- Stock out is handled
+- The invoice is not necessarily paid yet
+
+Step 2: Receipt / Payment
+
+- User records payment separately
+- Receipt is generated
+- Payment is recorded in the ledger
+- Customer balance is reduced
+- Invoice status becomes partially paid or paid
+
+Optional auto payment:
+
+- If settings say auto payment is enabled, the system automatically records payment after invoice creation
+- If settings say auto payment is disabled, payment must be posted manually
+
+6.3 Receipt Generation
+
+For the selling side, the missing document is the receipt.
+
+The invoice already exists, so the new work should add:
+
+- receipt entity or receipt output logic
+- receipt number
+- receipt print layout
+- receipt PDF generation
+- link between receipt and sales invoice
+- receipt ledger posting
+
+7. Suggested Data Objects For Phase Two
+
+To support the new workflow, the system will likely need new database objects.
+
+7.1 Buying Side
+
+Recommended new objects:
+
+- PurchaseInvoice
+- PurchaseInvoiceItem
+- PaymentVoucher
+- PurchaseLedgerEntry links
+- Purchase stock-in reference
+
+7.2 Selling Side
+
+Recommended new objects:
+
+- Receipt
+- ReceiptItem if needed
+- Sales payment record
+- Receipt ledger entry links
+
+7.3 Settings
+
+Recommended new settings:
+
+- `purchase.auto_payment_enabled`
+- `sales.auto_payment_enabled`
+- `purchase.invoice_prefix`
+- `receipt.number_prefix`
+- `voucher.number_prefix`
+- `payment.default_method`
+
+8. Current Behavior Summary In Plain Words
+
+Right now, the project works like this:
+
+- Selling is already implemented as a live sales invoice system.
+- When a sales invoice is posted, the system reduces stock and creates ledger entries automatically.
+- Cash sales are marked paid immediately.
+- Credit sales are posted with an unpaid balance.
+- There is no separate payment step for sales yet.
+- Buying is not yet a full purchase workflow.
+- Stock in exists only as a manual inventory movement.
+- Vendors exist as master data only.
+- There is no purchase invoice.
+- There is no payment voucher.
+- There is no receipt generation for sales.
+
+9. Phase Two Implementation Goal
+
+The phase-two goal should be to move from a single-step transaction model to a two-step accounting model:
+
+For buying:
+
+1. Create purchase invoice
+2. Record payment separately through payment voucher
+3. Optionally auto-post payment from settings
+
+For selling:
+
+1. Create sales invoice
+2. Record payment separately through receipt
+3. Optionally auto-post payment from settings
+
+This will make the system more correct for accounting, easier to audit, and closer to real-world business operations.
+
+10. Final Note
+
+The current codebase is already a solid base for this upgrade because:
+
+- inventory transactions already exist
+- ledger entries already exist
+- invoice numbering and settings already exist
+- vendors and customers already exist
+
+So phase two does not need a full rewrite.
+It needs new purchase and payment workflows, plus a better separation between invoice creation and payment posting.

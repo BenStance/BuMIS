@@ -30,6 +30,13 @@ export class InventoryTransaction extends BaseUuidEntity {
   invoiceId?: string;
 
   @Index()
+  @Column({ name: 'SourceId', type: 'uniqueidentifier', nullable: true })
+  sourceId?: string;
+
+  @Column({ name: 'SourceNumber', type: 'nvarchar', length: 100, nullable: true })
+  sourceNumber?: string;
+
+  @Index()
   @Column({ name: 'CreatedByUserId', type: 'uniqueidentifier', nullable: true })
   createdByUserId?: string;
 
@@ -56,6 +63,15 @@ export class InventoryTransaction extends BaseUuidEntity {
 
   @Column({ name: 'Notes', type: 'nvarchar', length: 255, nullable: true })
   notes?: string;
+
+  @Column({ name: 'IsReversal', type: 'bit', default: false })
+  isReversal!: boolean;
+
+  @Column({ name: 'ReversalOfTransactionId', type: 'uniqueidentifier', nullable: true })
+  reversalOfTransactionId?: string;
+
+  @Column({ name: 'ReversalBatchId', type: 'nvarchar', length: 100, nullable: true })
+  reversalBatchId?: string;
 
   @ManyToOne(() => Business, { onDelete: 'NO ACTION' })
   @JoinColumn({ name: 'BusinessId' })

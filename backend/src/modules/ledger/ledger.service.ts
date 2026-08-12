@@ -5,6 +5,9 @@ import { LedgerAccount } from '../../database/entities/ledger-account.entity';
 import { LedgerEntry } from '../../database/entities/ledger-entry.entity';
 import { SalesInvoice } from '../../database/entities/sales-invoice.entity';
 import { PaymentMethod, LedgerEntrySourceType, LedgerAccountType } from '../../common/enums/domain.enums';
+import { SalesReceipt } from '../../database/entities/sales-receipt.entity';
+import { PurchaseInvoice } from '../../database/entities/purchase-invoice.entity';
+import { PaymentVoucher } from '../../database/entities/payment-voucher.entity';
 
 type CurrentUserContext = {
   sub?: string;
@@ -19,6 +22,10 @@ type SystemAccounts = {
   salesRevenue: LedgerAccount;
   discounts: LedgerAccount;
   taxPayable: LedgerAccount;
+  inventory: LedgerAccount;
+  purchases: LedgerAccount;
+  inputTaxReceivable: LedgerAccount;
+  accountsPayable: LedgerAccount;
 };
 
 @Injectable()
@@ -187,8 +194,12 @@ export class LedgerService {
     const salesRevenue = await ensure('SYS-SALES-REV', 'Sales Revenue', LedgerAccountType.REVENUE, 'credit');
     const discounts = await ensure('SYS-DISCOUNTS', 'Discounts', LedgerAccountType.EXPENSE, 'debit');
     const taxPayable = await ensure('SYS-TAX-PAYABLE', 'Tax Payable', LedgerAccountType.LIABILITY, 'credit');
+    const inventory = await ensure('SYS-INVENTORY', 'Inventory', LedgerAccountType.ASSET, 'debit');
+    const purchases = await ensure('SYS-PURCHASES', 'Purchases', LedgerAccountType.EXPENSE, 'debit');
+    const inputTaxReceivable = await ensure('SYS-INPUT-TAX', 'Input Tax Receivable', LedgerAccountType.ASSET, 'debit');
+    const accountsPayable = await ensure('SYS-AP', 'Accounts Payable', LedgerAccountType.LIABILITY, 'credit');
 
-    return { cash, receivable, salesRevenue, discounts, taxPayable };
+    return { cash, receivable, salesRevenue, discounts, taxPayable, inventory, purchases, inputTaxReceivable, accountsPayable };
   }
 
   async postInvoiceEntries(
@@ -204,19 +215,22 @@ export class LedgerService {
     const taxTotal = Number(invoice.taxTotal ?? 0);
 
     const entries: LedgerEntry[] = [];
-    const debitAccount = invoice.paymentMethod === PaymentMethod.CASH ? accounts.cash : accounts.receivable;
 
     entries.push(
       ({
         businessId: invoice.businessId,
-        accountId: debitAccount.id,
+        accountId: accounts.receivable.id,
         invoiceId: invoice.id,
+        sourceId: invoice.id,
+        sourceNumber: invoice.invoiceNumber,
         createdByUserId: currentUser.sub,
         sourceType: LedgerEntrySourceType.INVOICE,
         reference: invoice.invoiceNumber,
-        description: `Invoice ${invoice.invoiceNumber} ${invoice.paymentMethod === PaymentMethod.CASH ? 'cash' : 'credit'} sale`,
+        description: `Invoice ${invoice.invoiceNumber} sale`,
         debit: invoiceAmount,
         credit: 0,
+        postingDate: new Date(),
+        isReversal: false,
       } as LedgerEntry),
     );
 
@@ -226,12 +240,16 @@ export class LedgerService {
           businessId: invoice.businessId,
           accountId: accounts.discounts.id,
           invoiceId: invoice.id,
+          sourceId: invoice.id,
+          sourceNumber: invoice.invoiceNumber,
           createdByUserId: currentUser.sub,
           sourceType: LedgerEntrySourceType.INVOICE,
           reference: invoice.invoiceNumber,
           description: `Invoice ${invoice.invoiceNumber} discount`,
           debit: discountTotal,
           credit: 0,
+          postingDate: new Date(),
+          isReversal: false,
         } as LedgerEntry),
       );
     }
@@ -241,12 +259,16 @@ export class LedgerService {
         businessId: invoice.businessId,
         accountId: accounts.salesRevenue.id,
         invoiceId: invoice.id,
+        sourceId: invoice.id,
+        sourceNumber: invoice.invoiceNumber,
         createdByUserId: currentUser.sub,
         sourceType: LedgerEntrySourceType.INVOICE,
         reference: invoice.invoiceNumber,
         description: `Invoice ${invoice.invoiceNumber} sales revenue`,
         debit: 0,
         credit: subtotal,
+        postingDate: new Date(),
+        isReversal: false,
       } as LedgerEntry),
     );
 
@@ -256,17 +278,164 @@ export class LedgerService {
           businessId: invoice.businessId,
           accountId: accounts.taxPayable.id,
           invoiceId: invoice.id,
+          sourceId: invoice.id,
+          sourceNumber: invoice.invoiceNumber,
           createdByUserId: currentUser.sub,
           sourceType: LedgerEntrySourceType.INVOICE,
           reference: invoice.invoiceNumber,
           description: `Invoice ${invoice.invoiceNumber} tax payable`,
           debit: 0,
           credit: taxTotal,
+          postingDate: new Date(),
+          isReversal: false,
         } as LedgerEntry),
       );
     }
 
     return ledgerEntriesRepository.save(entries as LedgerEntry[]);
+  }
+
+  async postSalesReceiptEntries(
+    manager: EntityManager,
+    receipt: SalesReceipt,
+    currentUser: CurrentUserContext,
+  ): Promise<LedgerEntry[]> {
+    const accounts = await this.ensureSystemAccounts();
+    const ledgerEntriesRepository = manager.getRepository(LedgerEntry);
+    const amount = Number(receipt.amount ?? 0);
+    const entries = [
+      {
+        businessId: receipt.businessId,
+        accountId: accounts.cash.id,
+        invoiceId: receipt.allocations?.[0]?.salesInvoiceId ?? undefined,
+        sourceId: receipt.id,
+        sourceNumber: receipt.receiptNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.SALES_RECEIPT,
+        reference: receipt.receiptNumber,
+        description: `Receipt ${receipt.receiptNumber} customer payment`,
+        debit: amount,
+        credit: 0,
+        postingDate: new Date(),
+        isReversal: false,
+      },
+      {
+        businessId: receipt.businessId,
+        accountId: accounts.receivable.id,
+        invoiceId: receipt.allocations?.[0]?.salesInvoiceId ?? undefined,
+        sourceId: receipt.id,
+        sourceNumber: receipt.receiptNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.SALES_RECEIPT,
+        reference: receipt.receiptNumber,
+        description: `Receipt ${receipt.receiptNumber} accounts receivable settlement`,
+        debit: 0,
+        credit: amount,
+        postingDate: new Date(),
+        isReversal: false,
+      },
+    ] as LedgerEntry[];
+    return ledgerEntriesRepository.save(entries);
+  }
+
+  async postPurchaseInvoiceEntries(
+    manager: EntityManager,
+    invoice: PurchaseInvoice,
+    currentUser: CurrentUserContext,
+  ): Promise<LedgerEntry[]> {
+    const accounts = await this.ensureSystemAccounts();
+    const ledgerEntriesRepository = manager.getRepository(LedgerEntry);
+    const total = Number(invoice.totalAmount ?? 0);
+    const subtotal = Number(invoice.subtotal ?? 0);
+    const discountTotal = Number(invoice.discountTotal ?? 0);
+    const taxTotal = Number(invoice.taxTotal ?? 0);
+    const inventoryNet = Math.max(subtotal - discountTotal, 0);
+
+    const entries: LedgerEntry[] = [
+      {
+        businessId: invoice.businessId,
+        accountId: accounts.inventory.id,
+        sourceId: invoice.id,
+        sourceNumber: invoice.purchaseInvoiceNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.PURCHASE_INVOICE,
+        reference: invoice.purchaseInvoiceNumber,
+        description: `Purchase invoice ${invoice.purchaseInvoiceNumber} inventory`,
+        debit: inventoryNet,
+        credit: 0,
+        postingDate: new Date(),
+        isReversal: false,
+      } as LedgerEntry,
+      {
+        businessId: invoice.businessId,
+        accountId: accounts.inputTaxReceivable.id,
+        sourceId: invoice.id,
+        sourceNumber: invoice.purchaseInvoiceNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.PURCHASE_INVOICE,
+        reference: invoice.purchaseInvoiceNumber,
+        description: `Purchase invoice ${invoice.purchaseInvoiceNumber} input tax`,
+        debit: taxTotal,
+        credit: 0,
+        postingDate: new Date(),
+        isReversal: false,
+      } as LedgerEntry,
+      {
+        businessId: invoice.businessId,
+        accountId: accounts.accountsPayable.id,
+        sourceId: invoice.id,
+        sourceNumber: invoice.purchaseInvoiceNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.PURCHASE_INVOICE,
+        reference: invoice.purchaseInvoiceNumber,
+        description: `Purchase invoice ${invoice.purchaseInvoiceNumber} accounts payable`,
+        debit: 0,
+        credit: total,
+        postingDate: new Date(),
+        isReversal: false,
+      } as LedgerEntry,
+    ];
+    return ledgerEntriesRepository.save(entries);
+  }
+
+  async postPaymentVoucherEntries(
+    manager: EntityManager,
+    voucher: PaymentVoucher,
+    currentUser: CurrentUserContext,
+  ): Promise<LedgerEntry[]> {
+    const accounts = await this.ensureSystemAccounts();
+    const ledgerEntriesRepository = manager.getRepository(LedgerEntry);
+    const amount = Number(voucher.amount ?? 0);
+    return ledgerEntriesRepository.save([
+      {
+        businessId: voucher.businessId,
+        accountId: accounts.accountsPayable.id,
+        sourceId: voucher.id,
+        sourceNumber: voucher.voucherNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.PAYMENT_VOUCHER,
+        reference: voucher.voucherNumber,
+        description: `Voucher ${voucher.voucherNumber} accounts payable settlement`,
+        debit: amount,
+        credit: 0,
+        postingDate: new Date(),
+        isReversal: false,
+      } as LedgerEntry,
+      {
+        businessId: voucher.businessId,
+        accountId: accounts.cash.id,
+        sourceId: voucher.id,
+        sourceNumber: voucher.voucherNumber,
+        createdByUserId: currentUser.sub,
+        sourceType: LedgerEntrySourceType.PAYMENT_VOUCHER,
+        reference: voucher.voucherNumber,
+        description: `Voucher ${voucher.voucherNumber} cash payment`,
+        debit: 0,
+        credit: amount,
+        postingDate: new Date(),
+        isReversal: false,
+      } as LedgerEntry,
+    ]);
   }
 
   async reverseInvoiceEntries(
@@ -297,6 +466,42 @@ export class LedgerService {
       } as LedgerEntry),
     );
 
+    return ledgerEntriesRepository.save(reversed as LedgerEntry[]);
+  }
+
+  async reverseEntriesBySource(
+    manager: EntityManager,
+    sourceId: string,
+    reference: string,
+    currentUser: CurrentUserContext,
+    sourceType: LedgerEntrySourceType,
+  ): Promise<LedgerEntry[]> {
+    const existingEntries = await manager.getRepository(LedgerEntry).find({
+      where: { sourceId },
+      relations: ['account'],
+    });
+    if (!existingEntries.length) {
+      return [];
+    }
+    const ledgerEntriesRepository = manager.getRepository(LedgerEntry);
+    const reversed = existingEntries.map((entry) =>
+      ({
+        businessId: entry.businessId,
+        accountId: entry.accountId,
+        invoiceId: entry.invoiceId,
+        sourceId,
+        sourceNumber: reference,
+        createdByUserId: currentUser.sub,
+        sourceType,
+        reference: `${entry.reference ?? reference}-REV`,
+        description: `Reversal of ${entry.description ?? reference}`,
+        debit: Number(entry.credit ?? 0),
+        credit: Number(entry.debit ?? 0),
+        postingDate: new Date(),
+        isReversal: true,
+        reversalOfEntryId: entry.id,
+      } as LedgerEntry),
+    );
     return ledgerEntriesRepository.save(reversed as LedgerEntry[]);
   }
 
