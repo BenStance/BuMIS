@@ -5,6 +5,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { RegisterBusinessDto } from './dto/register-business.dto';
+import { VerifyBusinessRegistrationDto } from './dto/verify-business-registration.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -37,6 +39,20 @@ export class AuthController {
       });
       throw error;
     }
+  }
+
+  @Public()
+  @Post('register-business')
+  registerBusiness(@Body() dto: RegisterBusinessDto): Promise<Record<string, unknown>> {
+    return this.authService.registerBusiness(dto);
+  }
+
+  @Public()
+  @Post('verify-business-registration')
+  verifyBusinessRegistration(
+    @Body() dto: VerifyBusinessRegistrationDto,
+  ): Promise<Record<string, unknown>> {
+    return this.authService.verifyBusinessRegistration(dto);
   }
 
   @Public()

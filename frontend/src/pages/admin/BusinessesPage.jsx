@@ -16,12 +16,14 @@ import {
   AlertCircle,
   X,
   ExternalLink,
+  Plus,
 } from 'lucide-react';
 import { adminApi } from '../../api/admin.api.js';
 import PageContainer from '../../layouts/PageContainer.jsx';
 import { navigateTo } from '../../utils/navigation.js';
 import { useThemeContext } from '../../context/ThemeContext.jsx';
 import { setAccessToken, setCurrentUser, setRefreshToken } from '../../utils/storage.js';
+import { BusinessRegistrationForm } from '../auth/RegisterBusinessPage.jsx';
 
 // Simple KPI Card (same as dashboard)
 function KpiCard({ icon: Icon, label, value, color, loading }) {
@@ -285,6 +287,7 @@ export function BusinessesPage() {
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState(null);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -388,15 +391,14 @@ export function BusinessesPage() {
       title="Businesses"
       subtitle="Manage all registered businesses, view details, and perform administrative actions."
       actions={
-        <button
-          type="button"
-          onClick={refreshAll}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-panel-strong)] disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setRegistrationOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+            <Plus className="h-4 w-4" /> Register Business
+          </button>
+          <button type="button" onClick={refreshAll} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-[var(--color-panel-border)] bg-[var(--color-panel)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)] transition hover:bg-[var(--color-panel-strong)] disabled:opacity-50">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+        </div>
       }
     >
       {/* Stats Cards */}
@@ -621,6 +623,24 @@ export function BusinessesPage() {
         onClose={() => setDrawerOpen(false)}
         onLogin={handleLoginAsBusiness}
       />
+
+      <AnimatePresence>
+        {registrationOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setRegistrationOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 20 }} className="fixed inset-x-4 top-1/2 z-50 mx-auto max-h-[90vh] max-w-3xl -translate-y-1/2 overflow-y-auto rounded-[2rem] border border-[var(--color-panel-border)] bg-[var(--color-panel-strong)] p-6 shadow-2xl sm:p-8">
+              <div className="mb-6 flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Register a business</h2>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">The owner must verify their email with the OTP sent to them.</p>
+                </div>
+                <button type="button" onClick={() => setRegistrationOpen(false)} className="rounded-xl p-2 text-[var(--color-text-secondary)] hover:bg-black/5 dark:hover:bg-white/5" aria-label="Close registration"><X className="h-5 w-5" /></button>
+              </div>
+              <BusinessRegistrationForm embedded onCancel={() => setRegistrationOpen(false)} onComplete={() => fetchData()} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </PageContainer>
   );
 }

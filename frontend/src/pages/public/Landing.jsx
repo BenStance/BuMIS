@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Clock,
   Wifi,
+  Building2,
 } from 'lucide-react';
 import logoImage from '../../assets/images/logo.png';
 
@@ -41,6 +42,10 @@ export default function LandingPage() {
 
   const handleSignIn = () => {
     navigateTo('/login');
+  };
+
+  const handleSignUp = () => {
+    navigateTo('/register');
   };
 
   if (!mounted) return <Loader fullScreen />;
@@ -280,6 +285,18 @@ export default function LandingPage() {
                 </span>
                 <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300" />
               </button>
+              <button
+                onClick={handleSignUp}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border-2 px-10 py-4 text-base font-bold transition-all duration-300 hover:shadow-xl hover:scale-105"
+                style={{
+                  color: darkMode ? '#ffffff' : primaryColor,
+                  borderColor: darkMode ? secondaryColor : primaryColor,
+                  background: darkMode ? 'rgba(66, 122, 161, 0.12)' : 'rgba(255, 255, 255, 0.65)',
+                }}
+              >
+                Sign Up
+                <Building2 className="w-4 h-4" />
+              </button>
             </motion.div>
 
             {/* Trust Indicators */}
@@ -292,7 +309,7 @@ export default function LandingPage() {
               {[
                 { icon: CheckCircle2, label: "Real‑time Data" },
                 { icon: Clock, label: "99.9% Uptime" },
-                { icon: Wifi, label: "ESP32 Ready" },
+                { icon: Wifi, label: "Availability" },
                 { icon: Shield, label: "Enterprise Security" },
                 
               ].map((item, idx) => (

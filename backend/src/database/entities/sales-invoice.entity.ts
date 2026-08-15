@@ -13,24 +13,24 @@ import { DocumentStatus, PaymentStatus } from '../../common/enums/domain.enums';
 @Index('UQ_SalesInvoices_BusinessId_InvoiceNumber', ['businessId', 'invoiceNumber'], { unique: true })
 export class SalesInvoice extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier' })
+  @Column({ name: 'BusinessId', type: 'uuid' })
   businessId!: string;
 
   @Index()
-  @Column({ name: 'CustomerId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'CustomerId', type: 'uuid', nullable: true })
   customerId?: string;
 
   @Index()
-  @Column({ name: 'CreatedByUserId', type: 'uniqueidentifier' })
+  @Column({ name: 'CreatedByUserId', type: 'uuid' })
   createdByUserId!: string;
 
-  @Column({ name: 'InvoiceNumber', type: 'nvarchar', length: 50 })
+  @Column({ name: 'InvoiceNumber', type: 'varchar', length: 50 })
   invoiceNumber!: string;
 
-  @Column({ name: 'PaymentMethod', type: 'nvarchar', length: 30, nullable: true })
+  @Column({ name: 'PaymentMethod', type: 'varchar', length: 30, nullable: true })
   paymentMethod?: PaymentMethod;
 
-  @Column({ name: 'InvoiceDate', type: 'datetime2', default: () => 'GETDATE()' })
+  @Column({ name: 'InvoiceDate', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   invoiceDate!: Date;
 
   @Column({ name: 'DueDate', type: 'date', nullable: true })
@@ -54,28 +54,28 @@ export class SalesInvoice extends BaseUuidEntity {
   @Column({ name: 'Balance', type: 'decimal', precision: 18, scale: 2, default: 0 })
   balance!: number;
 
-  @Column({ name: 'Status', type: 'nvarchar', length: 30, default: InvoiceStatus.DRAFT })
+  @Column({ name: 'Status', type: 'varchar', length: 30, default: InvoiceStatus.DRAFT })
   status!: InvoiceStatus;
 
-  @Column({ name: 'DocumentStatus', type: 'nvarchar', length: 30, default: DocumentStatus.DRAFT })
+  @Column({ name: 'DocumentStatus', type: 'varchar', length: 30, default: DocumentStatus.DRAFT })
   documentStatus!: DocumentStatus;
 
-  @Column({ name: 'PaymentStatus', type: 'nvarchar', length: 30, default: PaymentStatus.UNPAID })
+  @Column({ name: 'PaymentStatus', type: 'varchar', length: 30, default: PaymentStatus.UNPAID })
   paymentStatus!: PaymentStatus;
 
-  @Column({ name: 'Notes', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'Notes', type: 'varchar', length: 500, nullable: true })
   notes?: string;
 
-  @Column({ name: 'PdfUrl', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'PdfUrl', type: 'varchar', length: 500, nullable: true })
   pdfUrl?: string;
 
-  @Column({ name: 'CancelledAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'CancelledAt', type: 'timestamp', nullable: true })
   cancelledAt?: Date;
 
-  @Column({ name: 'CancelledByUserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'CancelledByUserId', type: 'uuid', nullable: true })
   cancelledByUserId?: string;
 
-  @Column({ name: 'CancellationReason', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'CancellationReason', type: 'varchar', length: 500, nullable: true })
   cancellationReason?: string;
 
   @ManyToOne(() => Business, (business) => business.invoices, { onDelete: 'NO ACTION' })

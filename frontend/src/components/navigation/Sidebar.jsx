@@ -151,7 +151,7 @@ function buildSections(roleName) {
     {
       title: NAV_GROUPS.operations,
       items: [
-        { to: '/invoices', label: 'Invoices', icon: 'invoices' },
+        { to: '/invoices', label: 'Sales Invoices', icon: 'invoices' },
         { to: '/purchase-invoices', label: 'Purchase Invoices', icon: 'purchaseInvoices' },
         { to: '/sales-receipts', label: 'Sales Receipts', icon: 'salesReceipts' },
         { to: '/payment-vouchers', label: 'Payment Vouchers', icon: 'paymentVouchers' },

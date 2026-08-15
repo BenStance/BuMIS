@@ -11,6 +11,7 @@ import { Business } from '../../database/entities/business.entity';
 import { SystemSetting } from '../../database/entities/system-setting.entity';
 import { AuditLog } from '../../database/entities/audit-log.entity';
 import { User } from '../../database/entities/user.entity';
+import { SalesReceiptAllocation } from '../../database/entities/sales-receipt-allocation.entity';
 import {
   AuditAction,
   DocumentStatus,
@@ -21,6 +22,7 @@ import {
   RecordStatus,
 } from '../../common/enums/domain.enums';
 import { LedgerService } from '../ledger/ledger.service';
+import { SalesReceiptsService } from '../sales-receipts/sales-receipts.service';
 import { CancelInvoiceDto } from './dto/cancel-invoice.dto';
 import { CreateInvoiceDto, CreateInvoiceItemDto, DiscountType } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -39,6 +41,7 @@ type InvoiceSettings = {
   taxEnabled: boolean;
   taxRate: number;
   defaultCustomerName: string;
+  autoSalesReceipt: boolean;
 };
 
 @Injectable()
@@ -55,6 +58,7 @@ export class InvoicesService {
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly ledgerService: LedgerService,
+    private readonly salesReceiptsService: SalesReceiptsService,
   ) {}
 
   async findAll(currentUser: CurrentUserContext, filters: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -216,6 +220,9 @@ export class InvoicesService {
           customer.balance = Number(customer.balance ?? 0) + Number(invoice.totalAmount ?? 0);
           await manager.getRepository(Customer).save(customer);
         }
+        if (settings.autoSalesReceipt) {
+          await this.salesReceiptsService.createAutomaticForInvoice(manager, invoice, currentUser);
+        }
       }
 
       await manager.getRepository(AuditLog).save(
@@ -346,6 +353,15 @@ export class InvoicesService {
       this.assertBusinessAccess(invoice.businessId, currentUser);
       if (invoice.status === InvoiceStatus.CANCELLED) {
         throw new BadRequestException('Invoice is already cancelled');
+      }
+      const postedReceiptCount = await manager.getRepository(SalesReceiptAllocation)
+        .createQueryBuilder('allocation')
+        .innerJoin('allocation.salesReceipt', 'receipt')
+        .where('allocation.salesInvoiceId = :invoiceId', { invoiceId: invoice.id })
+        .andWhere('receipt.status = :status', { status: 'posted' })
+        .getCount();
+      if (postedReceiptCount > 0 || invoice.paymentStatus !== PaymentStatus.UNPAID) {
+        throw new BadRequestException('This invoice has a posted sales receipt. Void the receipt before reversing the invoice.');
       }
 
       if (invoice.status !== InvoiceStatus.DRAFT) {
@@ -629,6 +645,7 @@ export class InvoicesService {
       taxEnabled: (values['invoice.tax_enabled'] ?? 'false') === 'true',
       taxRate: Number(values['invoice.tax_rate'] ?? 0) || 0,
       defaultCustomerName: values['invoice.walk_in_customer_name'] || 'Walk-in Customer',
+      autoSalesReceipt: values['invoice.auto_sales_receipt'] === 'true',
     };
   }
 

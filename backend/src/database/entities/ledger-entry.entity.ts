@@ -8,44 +8,44 @@ import { LedgerEntrySourceType } from '../../common/enums/domain.enums';
 @Entity({ name: 'LedgerEntries' })
 export class LedgerEntry extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'BusinessId', type: 'uuid', nullable: true })
   businessId?: string;
 
   @Index()
-  @Column({ name: 'AccountId', type: 'uniqueidentifier' })
+  @Column({ name: 'AccountId', type: 'uuid' })
   accountId!: string;
 
   @Index()
-  @Column({ name: 'InvoiceId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'InvoiceId', type: 'uuid', nullable: true })
   invoiceId?: string;
 
   @Index()
-  @Column({ name: 'SourceId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'SourceId', type: 'uuid', nullable: true })
   sourceId?: string;
 
-  @Column({ name: 'SourceNumber', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'SourceNumber', type: 'varchar', length: 100, nullable: true })
   sourceNumber?: string;
 
-  @Column({ name: 'PostingBatchId', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'PostingBatchId', type: 'varchar', length: 100, nullable: true })
   postingBatchId?: string;
 
   @Index()
-  @Column({ name: 'CreatedByUserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'CreatedByUserId', type: 'uuid', nullable: true })
   createdByUserId?: string;
 
-  @Column({ name: 'TransactionDate', type: 'datetime2', default: () => 'GETDATE()' })
+  @Column({ name: 'TransactionDate', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   transactionDate!: Date;
 
-  @Column({ name: 'PostingDate', type: 'datetime2', default: () => 'GETDATE()' })
+  @Column({ name: 'PostingDate', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   postingDate!: Date;
 
-  @Column({ name: 'SourceType', type: 'nvarchar', length: 30 })
+  @Column({ name: 'SourceType', type: 'varchar', length: 30 })
   sourceType!: LedgerEntrySourceType;
 
-  @Column({ name: 'Reference', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'Reference', type: 'varchar', length: 100, nullable: true })
   reference?: string;
 
-  @Column({ name: 'Description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'Description', type: 'varchar', length: 255, nullable: true })
   description?: string;
 
   @Column({ name: 'Debit', type: 'decimal', precision: 18, scale: 2, default: 0 })
@@ -54,13 +54,13 @@ export class LedgerEntry extends BaseUuidEntity {
   @Column({ name: 'Credit', type: 'decimal', precision: 18, scale: 2, default: 0 })
   credit!: number;
 
-  @Column({ name: 'IsReversal', type: 'bit', default: false })
+  @Column({ name: 'IsReversal', type: 'boolean', default: false })
   isReversal!: boolean;
 
-  @Column({ name: 'ReversalOfEntryId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'ReversalOfEntryId', type: 'uuid', nullable: true })
   reversalOfEntryId?: string;
 
-  @Column({ name: 'ReversalBatchId', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'ReversalBatchId', type: 'varchar', length: 100, nullable: true })
   reversalBatchId?: string;
 
   @ManyToOne(() => LedgerAccount, (account) => account.ledgerEntries, { onDelete: 'NO ACTION' })

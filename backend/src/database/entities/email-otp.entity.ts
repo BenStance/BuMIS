@@ -6,27 +6,27 @@ import { OtpPurpose } from '../../common/enums/domain.enums';
 @Entity({ name: 'EmailOtps' })
 export class EmailOtp extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'BusinessId', type: 'uuid', nullable: true })
   businessId?: string;
 
   @Index()
-  @Column({ name: 'UserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'UserId', type: 'uuid', nullable: true })
   userId?: string;
 
   @Index()
-  @Column({ name: 'Email', type: 'nvarchar', length: 150 })
+  @Column({ name: 'Email', type: 'varchar', length: 150 })
   email!: string;
 
-  @Column({ name: 'Purpose', type: 'nvarchar', length: 30 })
+  @Column({ name: 'Purpose', type: 'varchar', length: 30 })
   purpose!: OtpPurpose;
 
-  @Column({ name: 'OtpHash', type: 'nvarchar', length: 255 })
+  @Column({ name: 'OtpHash', type: 'varchar', length: 255 })
   otpHash!: string;
 
-  @Column({ name: 'ExpiresAt', type: 'datetime2' })
+  @Column({ name: 'ExpiresAt', type: 'timestamp' })
   expiresAt!: Date;
 
-  @Column({ name: 'UsedAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'UsedAt', type: 'timestamp', nullable: true })
   usedAt?: Date;
 
   @Column({ name: 'Attempts', type: 'int', default: 0 })

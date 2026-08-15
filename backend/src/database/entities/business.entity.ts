@@ -15,31 +15,31 @@ import { SystemSetting } from './system-setting.entity';
 @Entity({ name: 'Businesses' })
 export class Business extends BaseUuidEntity {
   @Index({ unique: true })
-  @Column({ name: 'BusinessName', type: 'nvarchar', length: 200 })
+  @Column({ name: 'BusinessName', type: 'varchar', length: 200 })
   businessName!: string;
 
-  @Column({ name: 'Logo', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'Logo', type: 'varchar', length: 500, nullable: true })
   logo?: string;
 
-  @Column({ name: 'Address', type: 'nvarchar', length: 300, nullable: true })
+  @Column({ name: 'Address', type: 'varchar', length: 300, nullable: true })
   address?: string;
 
-  @Column({ name: 'Phone', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'Phone', type: 'varchar', length: 50, nullable: true })
   phone?: string;
 
-  @Column({ name: 'Email', type: 'nvarchar', length: 150, nullable: true })
+  @Column({ name: 'Email', type: 'varchar', length: 150, nullable: true })
   email?: string;
 
-  @Column({ name: 'TIN', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'TIN', type: 'varchar', length: 50, nullable: true })
   tin?: string;
 
-  @Column({ name: 'Status', type: 'nvarchar', length: 30, default: BusinessStatus.ACTIVE })
+  @Column({ name: 'Status', type: 'varchar', length: 30, default: BusinessStatus.ACTIVE })
   status!: BusinessStatus;
 
-  @Column({ name: 'ActiveSubscriptionId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'ActiveSubscriptionId', type: 'uuid', nullable: true })
   activeSubscriptionId?: string;
 
-  @Column({ name: 'SubscriptionProofPath', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'SubscriptionProofPath', type: 'varchar', length: 500, nullable: true })
   subscriptionProofPath?: string;
 
   @OneToOne(() => BusinessSubscription, { nullable: true, onDelete: 'SET NULL' })

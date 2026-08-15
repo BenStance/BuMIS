@@ -6,23 +6,23 @@ import { LedgerEntry } from './ledger-entry.entity';
 @Entity({ name: 'LedgerAccounts' })
 export class LedgerAccount extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'BusinessId', type: 'uuid', nullable: true })
   businessId?: string;
 
   @Index({ unique: true })
-  @Column({ name: 'Code', type: 'nvarchar', length: 50 })
+  @Column({ name: 'Code', type: 'varchar', length: 50 })
   code!: string;
 
-  @Column({ name: 'Name', type: 'nvarchar', length: 150 })
+  @Column({ name: 'Name', type: 'varchar', length: 150 })
   name!: string;
 
-  @Column({ name: 'AccountType', type: 'nvarchar', length: 30 })
+  @Column({ name: 'AccountType', type: 'varchar', length: 30 })
   accountType!: LedgerAccountType;
 
-  @Column({ name: 'NormalBalance', type: 'nvarchar', length: 10, nullable: true })
+  @Column({ name: 'NormalBalance', type: 'varchar', length: 10, nullable: true })
   normalBalance?: string;
 
-  @Column({ name: 'IsSystem', type: 'bit', default: false })
+  @Column({ name: 'IsSystem', type: 'boolean', default: false })
   isSystem!: boolean;
 
   @OneToMany(() => LedgerEntry, (entry) => entry.account)

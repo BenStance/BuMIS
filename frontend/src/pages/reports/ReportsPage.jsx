@@ -584,7 +584,7 @@ export function ReportsPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 pt-5">
             <DocumentTable
               title="Recent Purchase Invoices"
               rows={purchaseInvoiceReports.slice(0, 5)}

@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { randomInt } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import { User } from '../../database/entities/user.entity';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { EmailOtp } from '../../database/entities/email-otp.entity';
@@ -25,6 +25,7 @@ import { Permission } from '../../database/entities/permission.entity';
 import { RolePermission } from '../../database/entities/role-permission.entity';
 import { UserPermission } from '../../database/entities/user-permission.entity';
 import { RegisterBusinessDto } from './dto/register-business.dto';
+import { VerifyBusinessRegistrationDto } from './dto/verify-business-registration.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -54,74 +55,162 @@ export class AuthService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    void this.seedCoreData().catch((error: unknown) =>
+    void this.seedDefaultAccessControl().catch((error: unknown) =>
       this.logger.error('Background auth seed failed', error instanceof Error ? error.stack : String(error)),
     );
   }
 
   async registerBusiness(dto: RegisterBusinessDto): Promise<Record<string, unknown>> {
+    this.mailerService.assertConfigured();
     const ownerRole = await this.rolesRepository.findOne({ where: { name: 'Business Owner' } });
     if (!ownerRole) {
       throw new BadRequestException('Business Owner role is not ready yet');
     }
 
-    const existingBusiness = await this.businessesRepository.findOne({
-      where: { businessName: dto.businessName },
-    });
-    if (existingBusiness) {
-      throw new BadRequestException('Business name already exists');
-    }
+    const ownerEmail = dto.ownerEmail.trim().toLowerCase();
+    const businessName = dto.businessName.trim();
+    const existingOwner = await this.usersRepository.findOne({ where: { email: ownerEmail } });
+    const existingBusiness = await this.businessesRepository.findOne({ where: { businessName } });
 
-    const existingOwner = await this.usersRepository.findOne({
-      where: { email: dto.ownerEmail },
-    });
-    if (existingOwner) {
-      throw new BadRequestException('Owner email already exists');
-    }
-
-    const business = (await this.businessesRepository.save(
-      this.businessesRepository.create({
-        businessName: dto.businessName,
-        email: dto.businessEmail,
-        phone: dto.phone,
-        address: dto.address,
-        tin: dto.tin,
-        status: BusinessStatus.ACTIVE,
-        activeSubscriptionId: null,
-      } as any),
-    )) as unknown as Business;
-
-    const owner = (await this.usersRepository.save(
-      this.usersRepository.create({
-        businessId: business.id,
-        roleId: ownerRole.id,
-        fullName: dto.ownerFullName,
-        email: dto.ownerEmail,
-        passwordHash: await bcrypt.hash(dto.ownerPassword, 12),
-        status: UserStatus.ACTIVE,
-        emailVerifiedAt: new Date(),
-      } as any),
-    )) as unknown as User;
-
-    await this.mailerService.sendMail(
-      owner.email,
-      'INVEXA Account Created',
-      `Your INVEXA owner account has been created. Please log in using ${owner.email}.`,
-      `<p>Your INVEXA owner account has been created. Please log in using <strong>${owner.email}</strong>.</p>`,
+    const canResume = Boolean(
+      existingOwner &&
+      existingBusiness &&
+      existingOwner.businessId === existingBusiness.id &&
+      !existingOwner.emailVerifiedAt &&
+      existingOwner.status === UserStatus.INACTIVE &&
+      existingBusiness.status === BusinessStatus.PENDING,
     );
-
-    const defaultPermissions = await this.permissionsRepository.find();
-    if (defaultPermissions.length) {
-      await this.userPermissionsRepository.upsert(
-        defaultPermissions.map((permission) => ({
-          userId: owner.id,
-          permissionId: permission.id,
-        })),
-        ['userId', 'permissionId'],
-      );
+    if ((existingOwner || existingBusiness) && !canResume) {
+      throw new BadRequestException(existingOwner ? 'Owner email already exists' : 'Business name already exists');
     }
 
-    return { business, owner, subscription: null };
+    const otp = this.generateOtp();
+    const passwordHash = await bcrypt.hash(dto.ownerPassword, 12);
+    const otpHash = await bcrypt.hash(otp, 10);
+
+    const result = await this.businessesRepository.manager.transaction(async (manager) => {
+      const businessRepository = manager.getRepository(Business);
+      const userRepository = manager.getRepository(User);
+      const otpRepository = manager.getRepository(EmailOtp);
+
+      const business = canResume
+        ? Object.assign(existingBusiness!, {
+            email: dto.businessEmail.trim().toLowerCase(),
+            phone: dto.phone?.trim() || undefined,
+            address: dto.address?.trim() || undefined,
+            tin: dto.tin?.trim() || undefined,
+          })
+        : businessRepository.create({
+            businessName,
+            email: dto.businessEmail.trim().toLowerCase(),
+            phone: dto.phone?.trim() || undefined,
+            address: dto.address?.trim() || undefined,
+            tin: dto.tin?.trim() || undefined,
+            status: BusinessStatus.PENDING,
+            activeSubscriptionId: undefined,
+          });
+      const savedBusiness = await businessRepository.save(business);
+
+      const owner = canResume
+        ? Object.assign(existingOwner!, {
+            fullName: dto.ownerFullName.trim(),
+            passwordHash,
+          })
+        : userRepository.create({
+            businessId: savedBusiness.id,
+            roleId: ownerRole.id,
+            fullName: dto.ownerFullName.trim(),
+            email: ownerEmail,
+            passwordHash,
+            status: UserStatus.INACTIVE,
+          });
+      const savedOwner = await userRepository.save(owner);
+
+      await otpRepository.update(
+        { email: ownerEmail, purpose: OtpPurpose.VERIFY_EMAIL, usedAt: IsNull() },
+        { usedAt: new Date() },
+      );
+      await otpRepository.save(
+        otpRepository.create({
+          businessId: savedBusiness.id,
+          userId: savedOwner.id,
+          email: ownerEmail,
+          purpose: OtpPurpose.VERIFY_EMAIL,
+          otpHash,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+        }),
+      );
+
+      return { business: savedBusiness, owner: savedOwner };
+    });
+
+    await this.mailerService.sendOtpEmail(ownerEmail, {
+      name: result.owner.fullName,
+      otp,
+      purpose: 'verify_email',
+    });
+
+    return {
+      message: 'Registration started. Enter the OTP sent to the business owner email.',
+      email: ownerEmail,
+      businessId: result.business.id,
+    };
+  }
+
+  async verifyBusinessRegistration(dto: VerifyBusinessRegistrationDto): Promise<Record<string, unknown>> {
+    const email = dto.email.trim().toLowerCase();
+    const otpRecord = await this.emailOtpsRepository.findOne({
+      where: { email, purpose: OtpPurpose.VERIFY_EMAIL, usedAt: IsNull() },
+      order: { createdAt: 'DESC' },
+    });
+    if (!otpRecord || otpRecord.expiresAt < new Date()) {
+      throw new BadRequestException('OTP is invalid or expired');
+    }
+
+    const otpValid = await bcrypt.compare(String(dto.otp), otpRecord.otpHash);
+    if (!otpValid) {
+      otpRecord.attempts = (otpRecord.attempts ?? 0) + 1;
+      if (otpRecord.attempts >= 5) otpRecord.usedAt = new Date();
+      await this.emailOtpsRepository.save(otpRecord);
+      throw new BadRequestException('OTP is invalid or expired');
+    }
+    if (!otpRecord.userId || !otpRecord.businessId) {
+      throw new BadRequestException('Registration record is incomplete');
+    }
+
+    const result = await this.usersRepository.manager.transaction(async (manager) => {
+      const userRepository = manager.getRepository(User);
+      const businessRepository = manager.getRepository(Business);
+      const otpRepository = manager.getRepository(EmailOtp);
+      const owner = await userRepository.findOne({ where: { id: otpRecord.userId! } });
+      const business = await businessRepository.findOne({ where: { id: otpRecord.businessId! } });
+      if (!owner || !business || owner.businessId !== business.id) {
+        throw new BadRequestException('Registration record is incomplete');
+      }
+
+      owner.status = UserStatus.ACTIVE;
+      owner.emailVerifiedAt = new Date();
+      business.status = BusinessStatus.ACTIVE;
+      otpRecord.usedAt = new Date();
+      await userRepository.save(owner);
+      await businessRepository.save(business);
+      await otpRepository.save(otpRecord);
+      return { owner, business };
+    });
+
+    void this.auditService.record({
+      businessId: result.business.id,
+      userId: result.owner.id,
+      action: AuditAction.CREATE,
+      entityName: 'Business',
+      entityId: result.business.id,
+      metadata: { source: 'email_registration' },
+    });
+
+    return {
+      message: 'Business and owner email verified successfully. You can now sign in.',
+      businessId: result.business.id,
+    };
   }
 
   async login(dto: LoginDto, ipAddress?: string, userAgent?: string): Promise<Record<string, unknown>> {
@@ -158,9 +247,8 @@ export class AuthService implements OnModuleInit {
   }
 
   async refreshAccessToken(refreshToken: string): Promise<Record<string, unknown>> {
-    const tokens = await this.refreshTokensRepository.find({ relations: ['user'] });
-    const tokenRecord = tokens.find((token) => bcrypt.compareSync(refreshToken, token.tokenHash));
-    if (!tokenRecord || tokenRecord.revokedAt || tokenRecord.expiresAt < new Date()) {
+    const tokenRecord = await this.findRefreshToken(refreshToken);
+    if (!tokenRecord || tokenRecord.revokedAt || tokenRecord.expiresAt < new Date() || !(await bcrypt.compare(refreshToken, tokenRecord.tokenHash))) {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const user = tokenRecord.user;
@@ -173,9 +261,8 @@ export class AuthService implements OnModuleInit {
   }
 
   async logout(refreshToken: string): Promise<Record<string, string>> {
-    const allTokens = await this.refreshTokensRepository.find({ relations: ['user'] });
-    const tokenRecord = allTokens.find((token) => bcrypt.compareSync(refreshToken, token.tokenHash));
-    if (tokenRecord) {
+    const tokenRecord = await this.findRefreshToken(refreshToken);
+    if (tokenRecord && await bcrypt.compare(refreshToken, tokenRecord.tokenHash)) {
       tokenRecord.revokedAt = new Date();
       await this.refreshTokensRepository.save(tokenRecord);
     }
@@ -187,6 +274,7 @@ export class AuthService implements OnModuleInit {
     if (!user) {
       return { message: 'If the email exists, an OTP has been sent' };
     }
+    this.mailerService.assertConfigured();
 
     const otp = this.generateOtp();
     const otpHash = await bcrypt.hash(otp, 10);
@@ -201,12 +289,7 @@ export class AuthService implements OnModuleInit {
       }),
     );
 
-    await this.mailerService.sendMail(
-      user.email,
-      'INVEXA Password Reset OTP',
-      `Your password reset OTP is ${otp}. It expires in 10 minutes.`,
-      `<p>Your password reset OTP is <strong>${otp}</strong>. It expires in 10 minutes.</p>`,
-    );
+    await this.mailerService.sendOtpEmail(user.email, { name: user.fullName, otp, purpose: 'password_reset' });
 
     return { message: 'If the email exists, an OTP has been sent' };
   }
@@ -256,12 +339,7 @@ export class AuthService implements OnModuleInit {
     user.passwordHash = await bcrypt.hash(dto.newPassword, 12);
     await this.usersRepository.save(user);
 
-    await this.mailerService.sendMail(
-      user.email,
-      'INVEXA Password Reset Successful',
-      'Your INVEXA password has been reset successfully.',
-      `<p>Your INVEXA password has been reset successfully.</p>`,
-    );
+    await this.mailerService.sendSecurityNotice(user.email, { name: user.fullName, event: 'password_reset' });
 
     otpRecord.usedAt = new Date();
     await this.emailOtpsRepository.save(otpRecord);
@@ -290,12 +368,7 @@ export class AuthService implements OnModuleInit {
     user.passwordHash = await bcrypt.hash(dto.newPassword, 12);
     await this.usersRepository.save(user);
 
-    await this.mailerService.sendMail(
-      user.email,
-      'INVEXA Password Changed',
-      'Your INVEXA password has been changed successfully.',
-      `<p>Your INVEXA password has been changed successfully.</p>`,
-    );
+    await this.mailerService.sendSecurityNotice(user.email, { name: user.fullName, event: 'password_changed' });
 
     await this.refreshTokensRepository.update({ userId }, { revokedAt: new Date() });
     void this.auditService.record({
@@ -451,7 +524,7 @@ export class AuthService implements OnModuleInit {
       },
       {
         secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-        expiresIn: (this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m') as any,
+        expiresIn: (this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '2h') as any,
       },
     );
   }
@@ -461,24 +534,38 @@ export class AuthService implements OnModuleInit {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<string> {
+    const tokenId = randomUUID();
     const refreshToken = this.jwtService.sign(
-      { sub: userId },
+      { sub: userId, jti: tokenId },
       {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '30m') as any,
+        expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d') as any,
       },
     );
     const tokenHash = await bcrypt.hash(refreshToken, 10);
     await this.refreshTokensRepository.save(
       this.refreshTokensRepository.create({
+        id: tokenId,
         userId,
         tokenHash,
-        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         ipAddress,
         userAgent,
       }),
     );
     return refreshToken;
+  }
+
+  private async findRefreshToken(refreshToken: string): Promise<RefreshToken | null> {
+    try {
+      const payload = await this.jwtService.verifyAsync<{ jti?: string }>(refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
+      if (!payload.jti) return null;
+      return this.refreshTokensRepository.findOne({ where: { id: payload.jti }, relations: ['user'] });
+    } catch {
+      return null;
+    }
   }
 
   async resolveBusinessSubscription(businessId?: string): Promise<BusinessSubscription | null> {
@@ -679,44 +766,4 @@ export class AuthService implements OnModuleInit {
     }
   }
 
-  private async seedCoreData(): Promise<void> {
-    await this.seedDefaultAccessControl();
-    await this.seedPlatformAdmin();
-  }
-
-  private async seedPlatformAdmin(): Promise<void> {
-    const adminEmail = 'benedict@bumis.com';
-    const legacyAdminEmail = 'benedict@bumis.co.tz';
-    const adminPassword = '45653211';
-    const adminRole = await this.rolesRepository.findOne({ where: { name: 'Platform Administrator' } });
-    if (!adminRole) {
-      return;
-    }
-
-    const passwordHash = await bcrypt.hash(adminPassword, 12);
-    const existingAdmin =
-      (await this.usersRepository.findOne({ where: { email: adminEmail } })) ??
-      (await this.usersRepository.findOne({ where: { email: legacyAdminEmail } }));
-    if (!existingAdmin) {
-      await this.usersRepository.save(
-        this.usersRepository.create({
-          roleId: adminRole.id,
-          fullName: 'Platform Administrator',
-          email: adminEmail,
-          passwordHash,
-          status: UserStatus.ACTIVE,
-          emailVerifiedAt: new Date(),
-        } as any),
-      );
-      return;
-    }
-
-    existingAdmin.email = adminEmail;
-    existingAdmin.roleId = adminRole.id;
-    existingAdmin.fullName = 'Platform Administrator';
-    existingAdmin.passwordHash = passwordHash;
-    existingAdmin.status = UserStatus.ACTIVE;
-    existingAdmin.emailVerifiedAt = existingAdmin.emailVerifiedAt ?? new Date();
-    await this.usersRepository.save(existingAdmin);
-  }
 }

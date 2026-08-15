@@ -10,26 +10,26 @@ import { SalesInvoiceItem } from './sales-invoice-item.entity';
 @Index('UQ_Products_BusinessId_SKU', ['businessId', 'sku'], { unique: true })
 export class Product extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier' })
+  @Column({ name: 'BusinessId', type: 'uuid' })
   businessId!: string;
 
   @Index()
-  @Column({ name: 'CategoryId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'CategoryId', type: 'uuid', nullable: true })
   categoryId?: string;
 
-  @Column({ name: 'ProductName', type: 'nvarchar', length: 200 })
+  @Column({ name: 'ProductName', type: 'varchar', length: 200 })
   productName!: string;
 
-  @Column({ name: 'SKU', type: 'nvarchar', length: 100 })
+  @Column({ name: 'SKU', type: 'varchar', length: 100 })
   sku!: string;
 
-  @Column({ name: 'Barcode', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'Barcode', type: 'varchar', length: 100, nullable: true })
   barcode?: string;
 
-  @Column({ name: 'Unit', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'Unit', type: 'varchar', length: 50, nullable: true })
   unit?: string;
 
-  @Column({ name: 'Description', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'Description', type: 'varchar', length: 500, nullable: true })
   description?: string;
 
   @Column({ name: 'BuyingPrice', type: 'decimal', precision: 18, scale: 2, default: 0 })
@@ -44,13 +44,13 @@ export class Product extends BaseUuidEntity {
   @Column({ name: 'MinimumStock', type: 'decimal', precision: 18, scale: 3, default: 0 })
   minimumStock!: number;
 
-  @Column({ name: 'ImageUrl', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'ImageUrl', type: 'varchar', length: 500, nullable: true })
   imageUrl?: string;
 
-  @Column({ name: 'LastStockMovementAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'LastStockMovementAt', type: 'timestamp', nullable: true })
   lastStockMovementAt?: Date;
 
-  @Column({ name: 'Status', type: 'nvarchar', length: 30, default: RecordStatus.ACTIVE })
+  @Column({ name: 'Status', type: 'varchar', length: 30, default: RecordStatus.ACTIVE })
   status!: RecordStatus;
 
   @ManyToOne(() => Business, (business) => business.products, { onDelete: 'NO ACTION' })

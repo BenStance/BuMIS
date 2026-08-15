@@ -6,6 +6,7 @@ export enum RecordStatus {
 }
 
 export enum BusinessStatus {
+  PENDING = 'pending',
   ACTIVE = 'active',
   SUSPENDED = 'suspended',
   CLOSED = 'closed',

@@ -6,14 +6,14 @@ import { Product } from './product.entity';
 @Entity({ name: 'PurchaseInvoiceItems' })
 export class PurchaseInvoiceItem extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'PurchaseInvoiceId', type: 'uniqueidentifier' })
+  @Column({ name: 'PurchaseInvoiceId', type: 'uuid' })
   purchaseInvoiceId!: string;
 
   @Index()
-  @Column({ name: 'ProductId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'ProductId', type: 'uuid', nullable: true })
   productId?: string;
 
-  @Column({ name: 'Description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'Description', type: 'varchar', length: 255, nullable: true })
   description?: string;
 
   @Column({ name: 'Quantity', type: 'decimal', precision: 18, scale: 3 })
@@ -37,7 +37,7 @@ export class PurchaseInvoiceItem extends BaseUuidEntity {
   @Column({ name: 'LineTotal', type: 'decimal', precision: 18, scale: 2 })
   lineTotal!: number;
 
-  @Column({ name: 'IsInventoryItem', type: 'bit', default: true })
+  @Column({ name: 'IsInventoryItem', type: 'boolean', default: true })
   isInventoryItem!: boolean;
 
   @ManyToOne(() => PurchaseInvoice, (purchaseInvoice) => purchaseInvoice.items, { onDelete: 'CASCADE' })

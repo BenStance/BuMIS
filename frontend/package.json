@@ -13,6 +13,7 @@
     "@tsparticles/react": "^4.3.0",
     "@tsparticles/slim": "^4.3.0",
     "autoprefixer": "^10.5.2",
+    "exceljs": "^4.4.0",
     "framer-motion": "^12.42.2",
     "lucide-react": "^1.22.0",
     "postcss": "^8.5.16",

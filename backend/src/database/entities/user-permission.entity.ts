@@ -7,17 +7,17 @@ import { User } from './user.entity';
 @Unique('UQ_UserPermissions_UserId_PermissionId', ['userId', 'permissionId'])
 export class UserPermission extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'UserId', type: 'uniqueidentifier' })
+  @Column({ name: 'UserId', type: 'uuid' })
   userId!: string;
 
   @Index()
-  @Column({ name: 'PermissionId', type: 'uniqueidentifier' })
+  @Column({ name: 'PermissionId', type: 'uuid' })
   permissionId!: string;
 
-  @Column({ name: 'GrantedByUserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'GrantedByUserId', type: 'uuid', nullable: true })
   grantedByUserId?: string;
 
-  @Column({ name: 'GrantedAt', type: 'datetime2', default: () => 'GETDATE()' })
+  @Column({ name: 'GrantedAt', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   grantedAt!: Date;
 
   @ManyToOne(() => User, (user) => user.permissions, { onDelete: 'CASCADE' })

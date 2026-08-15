@@ -944,7 +944,7 @@ function InvoiceListTable({ invoices, onView, onPrint, onCancel }) {
                     >
                       <Printer className="h-4 w-4" />
                     </button>
-                    {invoice.status === 'draft' && (
+                    {invoice.status !== 'cancelled' && String(invoice.paymentStatus || 'unpaid').toLowerCase() === 'unpaid' && (
                       <button
                         type="button"
                         onClick={() => onCancel(invoice.id)}
@@ -1004,14 +1004,14 @@ function InvoiceDetailCard({ invoice, onPrint, onCancel, onClose }) {
               <Printer className="h-4 w-4" />
               Print Invoice
             </button>
-            {invoice.status === 'draft' && (
+            {invoice.status !== 'cancelled' && String(invoice.paymentStatus || 'unpaid').toLowerCase() === 'unpaid' && (
               <button
                 type="button"
                 onClick={() => onCancel(invoice.id)}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-500/20 dark:text-rose-400"
               >
                 <Trash2 className="h-4 w-4" />
-                Cancel Draft
+                {invoice.status === 'draft' ? 'Cancel Draft' : 'Reverse Invoice'}
               </button>
             )}
             <button

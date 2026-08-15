@@ -6,19 +6,19 @@ import { Business } from './business.entity';
 @Unique('UQ_SystemSettings_BusinessId_Key', ['businessId', 'key'])
 export class SystemSetting extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'BusinessId', type: 'uuid', nullable: true })
   businessId?: string;
 
-  @Column({ name: 'SettingKey', type: 'nvarchar', length: 150 })
+  @Column({ name: 'SettingKey', type: 'varchar', length: 150 })
   key!: string;
 
-  @Column({ name: 'SettingValue', type: 'nvarchar', length: 'max', nullable: true })
+  @Column({ name: 'SettingValue', type: 'text', nullable: true })
   value?: string;
 
-  @Column({ name: 'Category', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'Category', type: 'varchar', length: 100, nullable: true })
   category?: string;
 
-  @Column({ name: 'Description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'Description', type: 'varchar', length: 255, nullable: true })
   description?: string;
 
   @ManyToOne(() => Business, (business) => business.settings, { onDelete: 'NO ACTION', nullable: true })

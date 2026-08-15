@@ -175,16 +175,26 @@ export class LedgerService {
       if (existing) {
         return existing;
       }
-      const account = (await this.ledgerAccountsRepository.save(
-        this.ledgerAccountsRepository.create({
+      // Multiple dashboard requests can initialize the chart of accounts concurrently.
+      // Let PostgreSQL arbitrate that race, then load the single canonical row.
+      await this.ledgerAccountsRepository
+        .createQueryBuilder()
+        .insert()
+        .into(LedgerAccount)
+        .values({
           businessId: null,
           code,
           name,
           accountType,
           normalBalance,
           isSystem: true,
-        } as any),
-      )) as unknown as LedgerAccount;
+        } as any)
+        .orIgnore()
+        .execute();
+      const account = await this.ledgerAccountsRepository.findOne({ where: { code } });
+      if (!account) {
+        throw new BadRequestException(`Unable to initialize ledger account ${code}`);
+      }
       byCode.set(code, account);
       return account;
     };

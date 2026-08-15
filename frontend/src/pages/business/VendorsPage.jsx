@@ -22,6 +22,8 @@ import {
 import { vendorsApi } from '../../api/index.js'
 import PageContainer from '../../layouts/PageContainer.jsx'
 import { useThemeContext } from '../../context/ThemeContext.jsx'
+import ExcelImportActions from '../../components/common/ExcelImportActions.jsx'
+import { vendorImport } from '../../utils/importTemplates.js'
 
 function MetricCard({ icon: Icon, label, value, color, loading, subtitle }) {
   return (
@@ -360,6 +362,14 @@ export function VendorsPage() {
       subtitle="Track supplier accounts, contact details, and purchasing relationships."
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          <ExcelImportActions
+            entityName="Vendors"
+            fileName="INVEXA_Vendors_Import_Template.xlsx"
+            columns={vendorImport.columns}
+            mapRow={vendorImport.mapRow}
+            createRecord={vendorsApi.create}
+            onImported={fetchVendors}
+          />
           <button type="button" onClick={openCreate} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
             <Plus className="h-4 w-4" />
             New Vendor

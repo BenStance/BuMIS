@@ -6,10 +6,10 @@ import { RolePermission } from './role-permission.entity';
 @Entity({ name: 'Roles' })
 export class Role extends BaseUuidEntity {
   @Index({ unique: true })
-  @Column({ name: 'Name', type: 'nvarchar', length: 100 })
+  @Column({ name: 'Name', type: 'varchar', length: 100 })
   name!: string;
 
-  @Column({ name: 'Description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'Description', type: 'varchar', length: 255, nullable: true })
   description?: string;
 
   @OneToMany(() => User, (user) => user.role)

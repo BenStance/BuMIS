@@ -6,11 +6,11 @@ import { PurchaseInvoice } from './purchase-invoice.entity';
 @Entity({ name: 'PaymentVoucherAllocations' })
 export class PaymentVoucherAllocation extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'PaymentVoucherId', type: 'uniqueidentifier' })
+  @Column({ name: 'PaymentVoucherId', type: 'uuid' })
   paymentVoucherId!: string;
 
   @Index()
-  @Column({ name: 'PurchaseInvoiceId', type: 'uniqueidentifier' })
+  @Column({ name: 'PurchaseInvoiceId', type: 'uuid' })
   purchaseInvoiceId!: string;
 
   @Column({ name: 'AllocatedAmount', type: 'decimal', precision: 18, scale: 2 })

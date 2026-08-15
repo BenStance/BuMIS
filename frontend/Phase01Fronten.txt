@@ -284,7 +284,7 @@ Sample response
   },
   "admin": {
     "id": "7a28f3c9-73d8-4c71-91bf-2b9c1fd0c111",
-    "email": "benedict@bumis.com",
+    "email": "benedict@invexaafrica.co.tz",
     "fullName": "Benedict ACT"
   }
 }

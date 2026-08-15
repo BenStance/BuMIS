@@ -147,6 +147,49 @@ export class PaymentVouchersService {
     return this.dataSource.transaction(async (manager) => this.postWithManager(manager, id, currentUser));
   }
 
+  async createAutomaticForInvoice(
+    manager: EntityManager,
+    invoice: PurchaseInvoice,
+    currentUser: CurrentUserContext,
+  ): Promise<Record<string, unknown>> {
+    const amount = Number(invoice.balance ?? invoice.totalAmount ?? 0);
+    if (amount <= 0) {
+      throw new BadRequestException('An automatic payment voucher requires a positive invoice balance');
+    }
+    const settings = await this.loadSettings(invoice.businessId, manager);
+    const voucherNumber = await this.documentNumberingService.generate(
+      {
+        businessId: invoice.businessId,
+        documentType: 'payment_voucher',
+        prefix: settings.prefix,
+        includeYear: settings.includeYear,
+        padding: settings.padding,
+      },
+      manager,
+    );
+    const voucherRepository = manager.getRepository(PaymentVoucher);
+    const voucher = await voucherRepository.save(voucherRepository.create({
+      businessId: invoice.businessId,
+      vendorId: invoice.vendorId,
+      createdById: currentUser.sub as string,
+      voucherNumber,
+      paymentDate: new Date(),
+      paymentMethod: 'cash',
+      amount,
+      referenceNumber: invoice.purchaseInvoiceNumber,
+      remarks: `Automatically generated payment for purchase invoice ${invoice.purchaseInvoiceNumber}.`,
+      status: PaymentDocumentStatus.DRAFT,
+      isAutomatic: true,
+    } as PaymentVoucher));
+    const allocationRepository = manager.getRepository(PaymentVoucherAllocation);
+    await allocationRepository.save(allocationRepository.create({
+      paymentVoucherId: voucher.id,
+      purchaseInvoiceId: invoice.id,
+      allocatedAmount: amount,
+    } as PaymentVoucherAllocation));
+    return this.postWithManager(manager, voucher.id, currentUser);
+  }
+
   async void(id: string, dto: VoidPaymentVoucherDto, currentUser: CurrentUserContext): Promise<Record<string, unknown>> {
     return this.dataSource.transaction(async (manager) => {
       const voucher = await manager.getRepository(PaymentVoucher).findOne({
@@ -183,6 +226,12 @@ export class PaymentVouchersService {
               ? PaymentStatus.PAID
               : PaymentStatus.PARTIALLY_PAID;
         await manager.getRepository(PurchaseInvoice).save(invoice);
+      }
+
+      const vendor = await manager.getRepository(Vendor).findOne({ where: { id: voucher.vendorId } });
+      if (vendor) {
+        vendor.balance = Number(vendor.balance ?? 0) + Number(voucher.amount ?? 0);
+        await manager.getRepository(Vendor).save(vendor);
       }
 
       voucher.status = PaymentDocumentStatus.VOIDED;
@@ -277,6 +326,12 @@ export class PaymentVouchersService {
 
     await this.ledgerService.postPaymentVoucherEntries(manager, voucher, currentUser as never);
 
+    const vendor = await manager.getRepository(Vendor).findOne({ where: { id: voucher.vendorId } });
+    if (vendor) {
+      vendor.balance = Math.max(Number(vendor.balance ?? 0) - totalAllocated, 0);
+      await manager.getRepository(Vendor).save(vendor);
+    }
+
     await manager.getRepository(AuditLog).save(
       manager.getRepository(AuditLog).create({
         businessId: voucher.businessId,
@@ -365,7 +420,21 @@ export class PaymentVouchersService {
   private shapeDetail(voucher: PaymentVoucher): Record<string, unknown> {
     return {
       ...this.shapeSummary(voucher),
+      vendor: voucher.vendor ? {
+        id: voucher.vendor.id,
+        name: voucher.vendor.name,
+        contactPerson: voucher.vendor.contactPerson ?? null,
+        email: voucher.vendor.email ?? null,
+        phone: voucher.vendor.phone ?? null,
+        address: voucher.vendor.address ?? null,
+        tin: voucher.vendor.tin ?? null,
+      } : null,
       remarks: voucher.remarks ?? null,
+      isAutomatic: voucher.isAutomatic,
+      paymentDate: voucher.paymentDate,
+      postingDate: voucher.postingDate ?? null,
+      paymentMethod: voucher.paymentMethod ?? null,
+      referenceNumber: voucher.referenceNumber ?? null,
       postedAt: voucher.postedAt ?? null,
       voidedAt: voucher.voidedAt ?? null,
       voidReason: voucher.voidReason ?? null,

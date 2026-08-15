@@ -19,6 +19,8 @@ import {
 import { categoriesApi } from '../../api/index.js'
 import PageContainer from '../../layouts/PageContainer.jsx'
 import { useThemeContext } from '../../context/ThemeContext.jsx'
+import ExcelImportActions from '../../components/common/ExcelImportActions.jsx'
+import { categoryImport } from '../../utils/importTemplates.js'
 
 function MetricCard({ icon: Icon, label, value, color, loading, subtitle }) {
   return (
@@ -408,6 +410,14 @@ export function CategoriesPage() {
       subtitle="Organize product groups, track catalog coverage, and keep your inventory structure clean."
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          <ExcelImportActions
+            entityName="Categories"
+            fileName="INVEXA_Categories_Import_Template.xlsx"
+            columns={categoryImport.columns}
+            mapRow={categoryImport.mapRow}
+            createRecord={categoriesApi.create}
+            onImported={fetchCategories}
+          />
           <button
             type="button"
             onClick={openCreate}

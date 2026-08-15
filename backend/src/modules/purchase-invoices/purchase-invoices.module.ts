@@ -13,6 +13,8 @@ import { LedgerModule } from '../ledger/ledger.module';
 import { DocumentNumberingModule } from '../document-numbering/document-numbering.module';
 import { PurchaseInvoicesController } from './purchase-invoices.controller';
 import { PurchaseInvoicesService } from './purchase-invoices.service';
+import { PaymentVouchersModule } from '../payment-vouchers/payment-vouchers.module';
+import { PaymentVoucherAllocation } from '../../database/entities/payment-voucher-allocation.entity';
 
 @Module({
   imports: [
@@ -26,9 +28,11 @@ import { PurchaseInvoicesService } from './purchase-invoices.service';
       InventoryTransaction,
       AuditLog,
       User,
+      PaymentVoucherAllocation,
     ]),
     LedgerModule,
     DocumentNumberingModule,
+    PaymentVouchersModule,
   ],
   controllers: [PurchaseInvoicesController],
   providers: [PurchaseInvoicesService],

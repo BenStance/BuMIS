@@ -36,8 +36,4 @@ export class RequestSubscriptionDto {
   @MaxLength(150)
   transactionReference?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
-  proofPath?: string;
 }

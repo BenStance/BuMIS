@@ -11,10 +11,12 @@ import { SystemSetting } from '../../database/entities/system-setting.entity';
 import { InventoryTransaction } from '../../database/entities/inventory-transaction.entity';
 import { AuditLog } from '../../database/entities/audit-log.entity';
 import { User } from '../../database/entities/user.entity';
+import { PaymentVoucherAllocation } from '../../database/entities/payment-voucher-allocation.entity';
 import { DocumentStatus, InventoryTransactionType, PaymentStatus, RecordStatus } from '../../common/enums/domain.enums';
 import { AuditAction, LedgerEntrySourceType } from '../../common/enums/domain.enums';
 import { LedgerService } from '../ledger/ledger.service';
 import { DocumentNumberingService } from '../document-numbering/document-numbering.service';
+import { PaymentVouchersService } from '../payment-vouchers/payment-vouchers.service';
 import { CreatePurchaseInvoiceDto, CreatePurchaseInvoiceItemDto } from './dto/create-purchase-invoice.dto';
 import { ReversePurchaseInvoiceDto } from './dto/reverse-purchase-invoice.dto';
 
@@ -45,6 +47,7 @@ export class PurchaseInvoicesService {
     private readonly dataSource: DataSource,
     private readonly ledgerService: LedgerService,
     private readonly documentNumberingService: DocumentNumberingService,
+    private readonly paymentVouchersService: PaymentVouchersService,
   ) {}
 
   async findAll(currentUser: CurrentUserContext, filters: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -184,7 +187,13 @@ export class PurchaseInvoicesService {
       if (invoice.documentStatus !== DocumentStatus.POSTED) {
         throw new BadRequestException('Only posted purchase invoices can be reversed');
       }
-      if (invoice.paymentStatus !== PaymentStatus.UNPAID) {
+      const postedVoucherCount = await manager.getRepository(PaymentVoucherAllocation)
+        .createQueryBuilder('allocation')
+        .innerJoin('allocation.paymentVoucher', 'voucher')
+        .where('allocation.purchaseInvoiceId = :invoiceId', { invoiceId: invoice.id })
+        .andWhere('voucher.status = :status', { status: 'posted' })
+        .getCount();
+      if (postedVoucherCount > 0 || invoice.paymentStatus !== PaymentStatus.UNPAID) {
         throw new BadRequestException('Purchase invoice has posted payments. Void the payment voucher before reversal.');
       }
 
@@ -358,6 +367,11 @@ export class PurchaseInvoicesService {
       await manager.getRepository(Vendor).save(vendor);
     }
 
+    const settings = await this.loadSettings(invoice.businessId, manager);
+    if (settings['invoice.auto_purchase_payment'] === 'true') {
+      await this.paymentVouchersService.createAutomaticForInvoice(manager, invoice, currentUser);
+    }
+
     await manager.getRepository(AuditLog).save(
       manager.getRepository(AuditLog).create({
           businessId: invoice.businessId,
@@ -521,7 +535,15 @@ export class PurchaseInvoicesService {
         lineTotal: Number(item.lineTotal ?? 0),
         isInventoryItem: item.isInventoryItem,
       })),
-      vendor: invoice.vendor ? { id: invoice.vendor.id, name: invoice.vendor.name, phone: invoice.vendor.phone, email: invoice.vendor.email } : null,
+      vendor: invoice.vendor ? {
+        id: invoice.vendor.id,
+        name: invoice.vendor.name,
+        contactPerson: invoice.vendor.contactPerson ?? null,
+        phone: invoice.vendor.phone ?? null,
+        email: invoice.vendor.email ?? null,
+        address: invoice.vendor.address ?? null,
+        tin: invoice.vendor.tin ?? null,
+      } : null,
     };
   }
 

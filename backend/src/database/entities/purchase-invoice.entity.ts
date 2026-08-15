@@ -12,45 +12,45 @@ import { LedgerEntry } from './ledger-entry.entity';
 @Index('UQ_PurchaseInvoices_BusinessId_Number', ['businessId', 'purchaseInvoiceNumber'], { unique: true })
 export class PurchaseInvoice extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier' })
+  @Column({ name: 'BusinessId', type: 'uuid' })
   businessId!: string;
 
   @Index()
-  @Column({ name: 'VendorId', type: 'uniqueidentifier' })
+  @Column({ name: 'VendorId', type: 'uuid' })
   vendorId!: string;
 
   @Index()
-  @Column({ name: 'CreatedByUserId', type: 'uniqueidentifier' })
+  @Column({ name: 'CreatedByUserId', type: 'uuid' })
   createdById!: string;
 
   @Index()
-  @Column({ name: 'PostedByUserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'PostedByUserId', type: 'uuid', nullable: true })
   postedById?: string;
 
   @Index()
-  @Column({ name: 'CancelledByUserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'CancelledByUserId', type: 'uuid', nullable: true })
   cancelledById?: string;
 
   @Index()
-  @Column({ name: 'ReversedByUserId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'ReversedByUserId', type: 'uuid', nullable: true })
   reversedById?: string;
 
-  @Column({ name: 'PurchaseInvoiceNumber', type: 'nvarchar', length: 50 })
+  @Column({ name: 'PurchaseInvoiceNumber', type: 'varchar', length: 50 })
   purchaseInvoiceNumber!: string;
 
-  @Column({ name: 'VendorInvoiceNumber', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'VendorInvoiceNumber', type: 'varchar', length: 100, nullable: true })
   vendorInvoiceNumber?: string;
 
-  @Column({ name: 'InvoiceDate', type: 'datetime2', default: () => 'GETDATE()' })
+  @Column({ name: 'InvoiceDate', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   invoiceDate!: Date;
 
-  @Column({ name: 'PostingDate', type: 'datetime2', nullable: true })
+  @Column({ name: 'PostingDate', type: 'timestamp', nullable: true })
   postingDate?: Date;
 
   @Column({ name: 'DueDate', type: 'date', nullable: true })
   dueDate?: Date;
 
-  @Column({ name: 'CurrencyCode', type: 'nvarchar', length: 10, default: 'TZS' })
+  @Column({ name: 'CurrencyCode', type: 'varchar', length: 10, default: 'TZS' })
   currencyCode!: string;
 
   @Column({ name: 'ExchangeRate', type: 'decimal', precision: 18, scale: 6, default: 1 })
@@ -74,34 +74,34 @@ export class PurchaseInvoice extends BaseUuidEntity {
   @Column({ name: 'Balance', type: 'decimal', precision: 18, scale: 2, default: 0 })
   balance!: number;
 
-  @Column({ name: 'DocumentStatus', type: 'nvarchar', length: 30, default: DocumentStatus.DRAFT })
+  @Column({ name: 'DocumentStatus', type: 'varchar', length: 30, default: DocumentStatus.DRAFT })
   documentStatus!: DocumentStatus;
 
-  @Column({ name: 'PaymentStatus', type: 'nvarchar', length: 30, default: PaymentStatus.UNPAID })
+  @Column({ name: 'PaymentStatus', type: 'varchar', length: 30, default: PaymentStatus.UNPAID })
   paymentStatus!: PaymentStatus;
 
-  @Column({ name: 'Remarks', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'Remarks', type: 'varchar', length: 500, nullable: true })
   remarks?: string;
 
-  @Column({ name: 'PostedAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'PostedAt', type: 'timestamp', nullable: true })
   postedAt?: Date;
 
-  @Column({ name: 'CancelledAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'CancelledAt', type: 'timestamp', nullable: true })
   cancelledAt?: Date;
 
-  @Column({ name: 'CancellationReason', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'CancellationReason', type: 'varchar', length: 500, nullable: true })
   cancellationReason?: string;
 
-  @Column({ name: 'ReversedAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'ReversedAt', type: 'timestamp', nullable: true })
   reversedAt?: Date;
 
   @Column({ name: 'ReversalDate', type: 'date', nullable: true })
   reversalDate?: Date;
 
-  @Column({ name: 'ReversalReason', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'ReversalReason', type: 'varchar', length: 500, nullable: true })
   reversalReason?: string;
 
-  @Column({ name: 'ReversalNumber', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'ReversalNumber', type: 'varchar', length: 50, nullable: true })
   reversalNumber?: string;
 
   @ManyToOne(() => Business, { onDelete: 'NO ACTION' })

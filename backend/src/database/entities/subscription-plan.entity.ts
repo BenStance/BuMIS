@@ -5,10 +5,10 @@ import { BusinessSubscription } from './business-subscription.entity';
 @Entity({ name: 'SubscriptionPlans' })
 export class SubscriptionPlan extends BaseUuidEntity {
   @Index({ unique: true })
-  @Column({ name: 'Name', type: 'nvarchar', length: 100 })
+  @Column({ name: 'Name', type: 'varchar', length: 100 })
   name!: string;
 
-  @Column({ name: 'BillingCycle', type: 'nvarchar', length: 30 })
+  @Column({ name: 'BillingCycle', type: 'varchar', length: 30 })
   billingCycle!: string;
 
   @Column({ name: 'Price', type: 'decimal', precision: 18, scale: 2, default: 0 })
@@ -20,10 +20,10 @@ export class SubscriptionPlan extends BaseUuidEntity {
   @Column({ name: 'DurationDays', type: 'int' })
   durationDays!: number;
 
-  @Column({ name: 'IsActive', type: 'bit', default: true })
+  @Column({ name: 'IsActive', type: 'boolean', default: true })
   isActive!: boolean;
 
-  @Column({ name: 'Features', type: 'nvarchar', length: 'max', nullable: true })
+  @Column({ name: 'Features', type: 'text', nullable: true })
   features?: string;
 
   @OneToMany(() => BusinessSubscription, (subscription) => subscription.plan)

@@ -21,6 +21,8 @@ import {
 import { categoriesApi, productsApi } from '../../api/index.js';
 import PageContainer from '../../layouts/PageContainer.jsx';
 import { useThemeContext } from '../../context/ThemeContext.jsx';
+import ExcelImportActions from '../../components/common/ExcelImportActions.jsx';
+import { productImport } from '../../utils/importTemplates.js';
 
 // ---------- Helper Components ----------
 function StatusBadge({ status, stockStatus }) {
@@ -352,7 +354,15 @@ export function ProductsPage() {
       title="Products"
       subtitle="Manage product records, pricing, stock tracking, and catalog details."
       actions={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <ExcelImportActions
+            entityName="Products"
+            fileName="INVEXA_Products_Import_Template.xlsx"
+            columns={productImport.columns}
+            mapRow={(row) => productImport.mapRow(row, categories)}
+            createRecord={productsApi.create}
+            onImported={fetchProducts}
+          />
           <button
             type="button"
             onClick={refreshAll}

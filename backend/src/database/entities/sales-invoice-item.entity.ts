@@ -6,11 +6,11 @@ import { Product } from './product.entity';
 @Entity({ name: 'SalesInvoiceItems' })
 export class SalesInvoiceItem extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'InvoiceId', type: 'uniqueidentifier' })
+  @Column({ name: 'InvoiceId', type: 'uuid' })
   invoiceId!: string;
 
   @Index()
-  @Column({ name: 'ProductId', type: 'uniqueidentifier' })
+  @Column({ name: 'ProductId', type: 'uuid' })
   productId!: string;
 
   @Column({ name: 'Quantity', type: 'decimal', precision: 18, scale: 3 })

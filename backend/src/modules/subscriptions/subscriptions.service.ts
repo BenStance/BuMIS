@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException, OnModuleInit } from
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
+import { chmod, readFile, unlink } from 'fs/promises';
 import { SubscriptionPlan } from '../../database/entities/subscription-plan.entity';
 import { BusinessSubscription } from '../../database/entities/business-subscription.entity';
 import { Business } from '../../database/entities/business.entity';
@@ -150,13 +151,16 @@ export class SubscriptionsService implements OnModuleInit {
     if (!businessId) {
       throw new BadRequestException('Business context is required');
     }
-    const proofPath = proof?.filename
-      ? `uploads/subscriptions/${proof.filename}`
-      : dto.proofPath?.trim() || '';
-
-    if (!proofPath) {
+    if (!proof?.filename) {
       throw new BadRequestException('Payment proof is required');
     }
+    const proofPath = `uploads/subscriptions/${proof.filename}`;
+    const isValidProof = await this.isValidPaymentProof(proof);
+    if (!isValidProof) {
+      await unlink(proof.path).catch(() => undefined);
+      throw new BadRequestException('Payment proof content must be a valid PDF, JPEG, or PNG file');
+    }
+    await chmod(proof.path, 0o600);
 
     const business = await this.businessesRepository.findOne({
       where: { id: businessId },
@@ -266,6 +270,17 @@ export class SubscriptionsService implements OnModuleInit {
     billingCycle,
     message: 'Subscription request submitted',
   };
+  }
+
+  private async isValidPaymentProof(file: Express.Multer.File): Promise<boolean> {
+    const buffer = await readFile(file.path);
+    if (file.mimetype === 'application/pdf') {
+      return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
+    }
+    if (file.mimetype === 'image/png') {
+      return buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    }
+    return file.mimetype === 'image/jpeg' && buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   }
 
   async getMySubscription(currentUser?: CurrentUserContext): Promise<Record<string, unknown>> {
@@ -453,35 +468,35 @@ export class SubscriptionsService implements OnModuleInit {
       .getMany();
 
     const owner = business.users?.find((user) => user.status === UserStatus.ACTIVE) ?? null;
-    const subject = `Subscription request received for ${business.businessName}`;
-    const text = [
-      `Business: ${business.businessName}`,
-      `Plan: ${planName}`,
-      `Billing cycle: ${billingCycle}`,
-      `Amount: ${payment.amount}`,
-      `Reference: ${payment.transactionReference ?? 'N/A'}`,
-      `Submitted by: ${currentUser?.email ?? owner?.email ?? business.email ?? 'Unknown'}`,
-    ].join('\n');
+    const submittedBy = currentUser?.email ?? owner?.email ?? business.email ?? 'Unknown';
 
     await Promise.allSettled([
       ...(admins
         .filter((admin) => admin.email)
         .map((admin) =>
-          this.mailerService.sendMail(
-            admin.email,
-            subject,
-            text,
-            `<p><strong>${business.businessName}</strong> submitted a subscription request.</p>`,
-          ),
+          this.mailerService.sendSubscriptionSubmitted(admin.email, {
+            recipientName: admin.fullName,
+            audience: 'admin',
+            businessName: business.businessName,
+            planName,
+            billingCycle,
+            amount: payment.amount,
+            reference: payment.transactionReference,
+            submittedBy,
+          }),
         ) ?? []),
       ...(owner?.email
         ? [
-            this.mailerService.sendMail(
-              owner.email,
-              'Your subscription request was submitted',
-              'Your subscription request has been received and is awaiting approval.',
-              '<p>Your subscription request has been received and is awaiting approval.</p>',
-            ),
+            this.mailerService.sendSubscriptionSubmitted(owner.email, {
+              recipientName: owner.fullName,
+              audience: 'owner',
+              businessName: business.businessName,
+              planName,
+              billingCycle,
+              amount: payment.amount,
+              reference: payment.transactionReference,
+              submittedBy,
+            }),
           ]
         : []),
     ]);

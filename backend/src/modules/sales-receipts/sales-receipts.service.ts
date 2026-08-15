@@ -148,6 +148,52 @@ export class SalesReceiptsService {
     return this.dataSource.transaction(async (manager) => this.postWithManager(manager, id, currentUser));
   }
 
+  async createAutomaticForInvoice(
+    manager: EntityManager,
+    invoice: SalesInvoice,
+    currentUser: CurrentUserContext,
+  ): Promise<Record<string, unknown>> {
+    if (!invoice.customerId) {
+      throw new BadRequestException('An automatic sales receipt requires a customer');
+    }
+    const amount = Number(invoice.balance ?? invoice.totalAmount ?? 0);
+    if (amount <= 0) {
+      throw new BadRequestException('An automatic sales receipt requires a positive invoice balance');
+    }
+    const settings = await this.loadSettings(invoice.businessId, manager);
+    const receiptNumber = await this.documentNumberingService.generate(
+      {
+        businessId: invoice.businessId,
+        documentType: 'sales_receipt',
+        prefix: settings.prefix,
+        includeYear: settings.includeYear,
+        padding: settings.padding,
+      },
+      manager,
+    );
+    const receiptRepository = manager.getRepository(SalesReceipt);
+    const receipt = await receiptRepository.save(receiptRepository.create({
+      businessId: invoice.businessId,
+      customerId: invoice.customerId,
+      createdById: currentUser.sub as string,
+      receiptNumber,
+      receiptDate: new Date(),
+      paymentMethod: invoice.paymentMethod ?? 'cash',
+      amount,
+      referenceNumber: invoice.invoiceNumber,
+      remarks: `Automatically generated payment for sales invoice ${invoice.invoiceNumber}.`,
+      status: PaymentDocumentStatus.DRAFT,
+      isAutomatic: true,
+    } as SalesReceipt));
+    const allocationRepository = manager.getRepository(SalesReceiptAllocation);
+    await allocationRepository.save(allocationRepository.create({
+      salesReceiptId: receipt.id,
+      salesInvoiceId: invoice.id,
+      allocatedAmount: amount,
+    } as SalesReceiptAllocation));
+    return this.postWithManager(manager, receipt.id, currentUser);
+  }
+
   async void(id: string, dto: VoidSalesReceiptDto, currentUser: CurrentUserContext): Promise<Record<string, unknown>> {
     return this.dataSource.transaction(async (manager) => {
       const receipt = await manager.getRepository(SalesReceipt).findOne({
@@ -184,6 +230,12 @@ export class SalesReceiptsService {
               ? PaymentStatus.PAID
               : PaymentStatus.PARTIALLY_PAID;
         await manager.getRepository(SalesInvoice).save(invoice);
+      }
+
+      const customer = await manager.getRepository(Customer).findOne({ where: { id: receipt.customerId } });
+      if (customer) {
+        customer.balance = Number(customer.balance ?? 0) + Number(receipt.amount ?? 0);
+        await manager.getRepository(Customer).save(customer);
       }
 
       receipt.status = PaymentDocumentStatus.VOIDED;
@@ -278,6 +330,12 @@ export class SalesReceiptsService {
 
     await this.ledgerService.postSalesReceiptEntries(manager, receipt, currentUser as never);
 
+    const customer = await manager.getRepository(Customer).findOne({ where: { id: receipt.customerId } });
+    if (customer) {
+      customer.balance = Math.max(Number(customer.balance ?? 0) - totalAllocated, 0);
+      await manager.getRepository(Customer).save(customer);
+    }
+
     await manager.getRepository(AuditLog).save(
       manager.getRepository(AuditLog).create({
         businessId: receipt.businessId,
@@ -366,7 +424,21 @@ export class SalesReceiptsService {
   private shapeDetail(receipt: SalesReceipt): Record<string, unknown> {
     return {
       ...this.shapeSummary(receipt),
+      customer: receipt.customer ? {
+        id: receipt.customer.id,
+        fullName: receipt.customer.fullName,
+        contactPerson: receipt.customer.contactPerson ?? null,
+        email: receipt.customer.email ?? null,
+        phone: receipt.customer.phone ?? null,
+        address: receipt.customer.address ?? null,
+        tin: receipt.customer.tin ?? null,
+      } : null,
       remarks: receipt.remarks ?? null,
+      isAutomatic: receipt.isAutomatic,
+      receiptDate: receipt.receiptDate,
+      postingDate: receipt.postingDate ?? null,
+      paymentMethod: receipt.paymentMethod ?? null,
+      referenceNumber: receipt.referenceNumber ?? null,
       postedAt: receipt.postedAt ?? null,
       voidedAt: receipt.voidedAt ?? null,
       voidReason: receipt.voidReason ?? null,

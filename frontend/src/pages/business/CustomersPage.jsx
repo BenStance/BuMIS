@@ -24,6 +24,8 @@ import {
 import { customersApi } from '../../api/index.js'
 import PageContainer from '../../layouts/PageContainer.jsx'
 import { useThemeContext } from '../../context/ThemeContext.jsx'
+import ExcelImportActions from '../../components/common/ExcelImportActions.jsx'
+import { customerImport } from '../../utils/importTemplates.js'
 
 function MetricCard({ icon: Icon, label, value, color, loading, subtitle }) {
   return (
@@ -390,6 +392,14 @@ export function CustomersPage() {
       subtitle="Manage customer accounts, balances, and purchase relationships across the business."
       actions={
         <div className="flex flex-wrap items-center gap-2">
+          <ExcelImportActions
+            entityName="Customers"
+            fileName="INVEXA_Customers_Import_Template.xlsx"
+            columns={customerImport.columns}
+            mapRow={customerImport.mapRow}
+            createRecord={customersApi.create}
+            onImported={fetchCustomers}
+          />
           <button
             type="button"
             onClick={openCreate}

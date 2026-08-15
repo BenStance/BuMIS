@@ -7,14 +7,14 @@ import { AuditLog } from './audit-log.entity';
 @Unique('UQ_NotificationReads_User_Notification', ['userId', 'notificationId'])
 export class NotificationRead extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'UserId', type: 'uniqueidentifier' })
+  @Column({ name: 'UserId', type: 'uuid' })
   userId!: string;
 
   @Index()
-  @Column({ name: 'NotificationId', type: 'uniqueidentifier' })
+  @Column({ name: 'NotificationId', type: 'uuid' })
   notificationId!: string;
 
-  @Column({ name: 'ReadAt', type: 'datetime2', default: () => 'GETDATE()' })
+  @Column({ name: 'ReadAt', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   readAt!: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })

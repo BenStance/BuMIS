@@ -82,12 +82,7 @@ export class UsersService {
       } as any),
     )) as unknown as User;
 
-    await this.mailerService.sendMail(
-      user.email,
-      'INVEXA Account Created',
-      `Your INVEXA account has been created. Please log in using ${user.email}.`,
-      `<p>Your INVEXA account has been created. Please log in using <strong>${user.email}</strong>.</p>`,
-    );
+    await this.mailerService.sendAccountCreated(user.email, { name: user.fullName, roleName: role.name });
 
     return user;
   }

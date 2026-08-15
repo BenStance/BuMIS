@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { navigateTo } from '../../utils/navigation.js';
 
 export function ResetPasswordPage() {
-  const [form, setForm] = useState({ email: 'benedict@bumis.com', otp: '', newPassword: '' });
+  const [form, setForm] = useState({ email: '', otp: '', newPassword: '' });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 

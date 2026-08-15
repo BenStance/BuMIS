@@ -5,7 +5,6 @@ import {
   ChevronRight,
   ClipboardList,
   Eye,
-  FileText,
   Printer,
   Plus,
   RefreshCw,
@@ -211,27 +210,36 @@ function SelectField({ label, value, onChange, options, required = false }) {
   )
 }
 
-function PrintWindow({ doc, config }) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+function PrintWindow({ doc, config, business = {}, primaryColor = '#064789', secondaryColor = '#427aa1' }) {
   const lines = doc.items || []
   const allocations = doc.allocations || []
-  const title = config.title
-  const number = doc[config.numberKey] || '-'
+  const title = config.entityLabel
+  const number = escapeHtml(doc[config.numberKey] || '-')
   const primary = doc[config.primaryField] || {}
   const amount = Number(doc.amount ?? doc.totalAmount ?? 0)
-  const html = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>${number}</title><style>
-    body{margin:0;padding:24px;background:#f8fbff;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
-    .sheet{max-width:900px;margin:0 auto;background:#fff;border:1px solid #dbe4f0;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(15,23,42,.08)}
-    .hero{padding:26px 30px;background:linear-gradient(135deg,#064789,#427aa1);color:#fff}
-    .content{padding:28px 30px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .card{border:1px solid #dbe4f0;border-radius:18px;padding:16px}
-    table{width:100%;border-collapse:collapse;margin-top:18px}
-    th,td{border-bottom:1px solid #e5edf6;padding:10px 12px;text-align:left;font-size:14px}
-    th{text-transform:uppercase;letter-spacing:.12em;font-size:11px;color:#475569;background:#f6f9ff}
-    .totals{display:grid;grid-template-columns:1fr 280px;gap:14px;margin-top:18px}
-    .muted{color:#64748b}
-    .total-row{display:flex;justify-content:space-between;margin:8px 0}
-  </style></head><body><div class="sheet"><div class="hero"><h1 style="margin:0;font-size:24px">${title}</h1><div style="margin-top:6px;opacity:.9">${number}</div></div><div class="content"><div class="grid"><div class="card"><div class="muted">${config.primaryLabel}</div><div style="font-weight:700;margin-top:6px">${primary.name || primary.fullName || '-'}</div></div><div class="card"><div class="muted">Document</div><div style="font-weight:700;margin-top:6px">${config.entityLabel}</div></div></div><table><thead><tr>${config.documentKind === 'purchase-invoice' ? '<th>Description</th><th>Qty</th><th>Unit Cost</th><th>Total</th>' : config.documentKind === 'sales-receipt' || config.documentKind === 'payment-voucher' ? '<th>Invoice</th><th>Allocated</th>' : '<th>Description</th><th>Qty</th><th>Unit</th><th>Total</th>'}</tr></thead><tbody>${config.documentKind === 'purchase-invoice' ? lines.map((item) => `<tr><td>${item.description || item.productName || '-'}</td><td>${Number(item.quantity ?? 0).toLocaleString()}</td><td>${formatCurrency(item.unitCost)}</td><td>${formatCurrency(item.lineTotal)}</td></tr>`).join('') : allocations.map((item) => `<tr><td>${item.salesInvoiceNumber || item.purchaseInvoiceNumber || item.salesInvoiceId || item.purchaseInvoiceId}</td><td>${formatCurrency(item.allocatedAmount)}</td></tr>`).join('')}</tbody></table><div class="totals"><div>${doc.remarks ? `<div class="card"><div class="muted">Remarks</div><div style="margin-top:6px">${doc.remarks}</div></div>` : ''}</div><div class="card"><div class="total-row"><span>Amount</span><strong>${formatCurrency(amount)}</strong></div><div class="total-row"><span>Status</span><strong>${String(doc.status || doc.documentStatus || '-').replace(/_/g, ' ')}</strong></div></div></div></div></div></body></html>`
+  const isPurchase = config.documentKind === 'purchase-invoice'
+  const documentDate = doc.invoiceDate || doc.receiptDate || doc.paymentDate || doc.createdAt
+  const status = String(doc.paymentStatus || doc.status || doc.documentStatus || '-').replace(/_/g, ' ')
+  const partyName = primary.name || primary.fullName || '-'
+  const partyDetails = [primary.contactPerson, primary.email, primary.phone, primary.address]
+    .filter(Boolean).map((value) => escapeHtml(value)).join('<br/>')
+  const logoUrl = business.logo ? new URL(business.logo, window.location.origin).href : ''
+  const logo = logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="Company logo"/>` : `<span>${escapeHtml((business.businessName || 'I').charAt(0))}</span>`
+  const rows = isPurchase
+    ? lines.map((item) => `<tr><td><strong>${escapeHtml(item.productName || item.description || 'Item')}</strong>${item.sku ? `<small>${escapeHtml(item.sku)}</small>` : ''}</td><td>${Number(item.quantity ?? 0).toLocaleString()}</td><td>${formatCurrency(item.unitCost)}</td><td>${formatCurrency(item.discountAmount)}</td><td>${formatCurrency(item.taxAmount)}</td><td class="right"><strong>${formatCurrency(item.lineTotal)}</strong></td></tr>`).join('')
+    : allocations.map((item) => `<tr><td><strong>${escapeHtml(item.salesInvoiceNumber || item.purchaseInvoiceNumber || item.salesInvoiceId || item.purchaseInvoiceId || '-')}</strong></td><td class="right"><strong>${formatCurrency(item.allocatedAmount)}</strong></td></tr>`).join('')
+  const html = `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${number}</title><style>
+    :root{--brand:${primaryColor};--brand2:${secondaryColor};--ink:#0f172a;--muted:#64748b;--line:#dbe4f0;--soft:#f6f9ff}*{box-sizing:border-box}body{margin:0;padding:24px;background:#eef4fb;color:var(--ink);font-family:Inter,Arial,sans-serif}.sheet{max-width:920px;min-height:1120px;margin:auto;background:#fff;border:1px solid var(--line);border-radius:26px;overflow:hidden;box-shadow:0 22px 60px rgba(15,23,42,.1)}.hero{padding:30px 34px;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand2));position:relative}.hero:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 90% 5%,rgba(255,255,255,.24),transparent 38%)}.hero-grid{position:relative;z-index:1;display:flex;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:15px}.logo{width:62px;height:62px;border:1px solid rgba(255,255,255,.3);border-radius:18px;background:rgba(255,255,255,.16);display:grid;place-items:center;overflow:hidden;font-size:25px;font-weight:900}.logo img{width:100%;height:100%;object-fit:contain;background:#fff}.company h1,.doc-title h2{margin:0}.company p{margin:6px 0 0;font-size:13px;line-height:1.55;opacity:.92}.doc-title{text-align:right}.doc-title h2{font-size:25px;text-transform:uppercase;letter-spacing:.08em}.doc-number{display:inline-block;margin-top:10px;padding:7px 12px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:rgba(255,255,255,.12);font-size:12px;letter-spacing:.1em}.content{padding:28px 34px}.meta{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-bottom:20px}.card{border:1px solid var(--line);border-radius:18px;padding:17px;background:linear-gradient(180deg,#fff,#fbfdff)}.label{color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.name{font-size:17px;font-weight:800;margin:7px 0}.details{font-size:13px;line-height:1.55;color:#475569}.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:13px}.facts span:nth-child(odd){color:var(--muted)}.facts span:nth-child(even){text-align:right;font-weight:700;text-transform:capitalize}table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:18px;overflow:hidden}th{padding:12px 13px;text-align:left;background:var(--soft);color:#475569;font-size:10px;letter-spacing:.12em;text-transform:uppercase}td{padding:13px;border-top:1px solid var(--line);font-size:13px}td small{display:block;margin-top:4px;color:var(--muted)}.right{text-align:right}.summary{display:grid;grid-template-columns:1fr 310px;gap:18px;margin-top:20px;align-items:start}.note{border-left:4px solid var(--brand);background:var(--soft);padding:15px;border-radius:14px;font-size:13px;line-height:1.55}.totals{border:1px solid var(--line);border-radius:18px;padding:16px}.total-row{display:flex;justify-content:space-between;gap:12px;margin:9px 0;font-size:13px}.grand{border-top:1px solid var(--line);padding-top:12px;margin-top:12px;font-size:16px;font-weight:900}.footer{margin:26px 34px 0;padding:18px 0 26px;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.status{color:var(--brand);font-weight:900;text-transform:uppercase}@page{size:A4;margin:10mm}@media print{body{padding:0;background:#fff}.sheet{min-height:auto;border:0;border-radius:0;box-shadow:none}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}thead{display:table-header-group}tr{break-inside:avoid}.footer{break-inside:avoid}}@media(max-width:700px){.hero-grid,.meta,.summary{display:grid;grid-template-columns:1fr}.doc-title{text-align:left}}
+  </style></head><body><main class="sheet"><header class="hero"><div class="hero-grid"><div class="brand"><div class="logo">${logo}</div><div class="company"><h1>${escapeHtml(business.businessName || 'INVEXA Business')}</h1><p>${escapeHtml(business.address || 'Business address not set')}<br/>${escapeHtml([business.phone, business.email].filter(Boolean).join(' • '))}${business.tin ? `<br/>TIN: ${escapeHtml(business.tin)}` : ''}</p></div></div><div class="doc-title"><h2>${escapeHtml(title)}</h2><div class="doc-number">${number}</div></div></div></header><section class="content"><div class="meta"><div class="card"><div class="label">${escapeHtml(config.primaryLabel)}</div><div class="name">${escapeHtml(partyName)}</div><div class="details">${partyDetails || 'Contact details not provided.'}${primary.tin ? `<br/>TIN: ${escapeHtml(primary.tin)}` : ''}</div></div><div class="card"><div class="label">Document Details</div><div class="facts"><span>Date</span><span>${escapeHtml(formatDate(documentDate))}</span>${doc.dueDate ? `<span>Due date</span><span>${escapeHtml(formatDate(doc.dueDate))}</span>` : ''}${doc.vendorInvoiceNumber ? `<span>Vendor ref.</span><span>${escapeHtml(doc.vendorInvoiceNumber)}</span>` : ''}${doc.referenceNumber ? `<span>Reference</span><span>${escapeHtml(doc.referenceNumber)}</span>` : ''}${doc.paymentMethod ? `<span>Payment method</span><span>${escapeHtml(String(doc.paymentMethod).replace(/_/g, ' '))}</span>` : ''}<span>Status</span><span class="status">${escapeHtml(status)}</span></div></div></div><table><thead><tr>${isPurchase ? '<th style="width:38%">Item / Description</th><th>Qty</th><th>Unit Cost</th><th>Discount</th><th>Tax</th><th class="right">Total</th>' : '<th>Invoice Allocation</th><th class="right">Amount</th>'}</tr></thead><tbody>${rows || `<tr><td colspan="${isPurchase ? 6 : 2}" style="text-align:center;color:var(--muted)">No line details available</td></tr>`}</tbody></table><div class="summary"><div>${doc.remarks ? `<div class="note"><div class="label">Remarks</div><div style="margin-top:7px">${escapeHtml(doc.remarks)}</div></div>` : ''}</div><div class="totals">${isPurchase ? `<div class="total-row"><span>Subtotal</span><strong>${formatCurrency(doc.subtotal)}</strong></div><div class="total-row"><span>Discount</span><strong>${formatCurrency(doc.discountTotal)}</strong></div><div class="total-row"><span>Tax</span><strong>${formatCurrency(doc.taxTotal)}</strong></div><div class="total-row grand"><span>Grand Total</span><span>${formatCurrency(amount)}</span></div><div class="total-row"><span>Amount Paid</span><strong>${formatCurrency(doc.amountPaid)}</strong></div><div class="total-row"><span>Balance Due</span><strong>${formatCurrency(doc.balance)}</strong></div>` : `<div class="total-row grand" style="border-top:0;padding-top:0;margin-top:0"><span>Total Amount</span><span>${formatCurrency(amount)}</span></div>`}</div></div></section><footer class="footer"><span>Generated by INVEXA</span><span>${escapeHtml(formatDate(new Date()))}</span></footer></main></body></html>`
   const win = window.open('', '_blank', 'width=1200,height=900')
   if (!win) return
   win.document.open()
@@ -301,6 +309,7 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
   const [customers, setCustomers] = useState([])
   const [salesInvoiceOptions, setSalesInvoiceOptions] = useState([])
   const [purchaseInvoiceOptions, setPurchaseInvoiceOptions] = useState([])
+  const [businessProfile, setBusinessProfile] = useState({})
   const [form, setForm] = useState({
     vendorId: '',
     customerId: '',
@@ -354,7 +363,9 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
         requests.push(Promise.resolve(null))
       }
 
-      const [listData, productsData, vendorsData, customersData, salesInvoicesData, purchaseInvoicesData] = await Promise.allSettled(requests)
+      requests.push(settingsApi.all())
+
+      const [listData, productsData, vendorsData, customersData, salesInvoicesData, purchaseInvoicesData, settingsData] = await Promise.allSettled(requests)
       if (listData.status === 'fulfilled') {
         setItems(listData.value.items || [])
         setTotal(listData.value.total || 0)
@@ -364,12 +375,13 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
       if (customersData.status === 'fulfilled') setCustomers(normalizeList(customersData.value))
       if (salesInvoicesData?.status === 'fulfilled') setSalesInvoiceOptions(salesInvoicesData.value?.items || [])
       if (purchaseInvoicesData?.status === 'fulfilled') setPurchaseInvoiceOptions(purchaseInvoicesData.value?.items || [])
+      if (settingsData?.status === 'fulfilled') setBusinessProfile(settingsData.value?.business || {})
     } catch (err) {
       setError(err?.message || 'Failed to load documents.')
     } finally {
       setLoading(false)
     }
-  }, [api, listParams])
+  }, [api, docType, listParams])
 
   const openDetail = useCallback(async (id) => {
     try {
@@ -605,7 +617,7 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
       </div><br/>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <form onSubmit={(e) => { e.preventDefault(); setPage(1); fetchData(); }} className="flex flex-1 flex-col gap-3 sm:flex-row">
+        <form onSubmit={(e) => { e.preventDefault(); setPage(1); setSearch(searchInput.trim()); }} className="flex flex-1 flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
             <input
@@ -782,10 +794,52 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
           </div>
         ) : selected ? (
           <div className="space-y-6">
+            <div
+              className="overflow-hidden rounded-3xl p-6 text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` }}
+            >
+              <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+                <div className="flex items-center gap-4">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/25 bg-white/15 text-2xl font-black">
+                    {businessProfile.logo ? <img src={businessProfile.logo} alt="Company logo" className="h-full w-full bg-white object-contain" /> : (businessProfile.businessName || 'I').charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black">{businessProfile.businessName || 'INVEXA Business'}</h3>
+                    <p className="mt-1 max-w-xl text-sm text-white/80">{[businessProfile.address, businessProfile.phone, businessProfile.email].filter(Boolean).join(' • ') || 'Business contact details'}</p>
+                  </div>
+                </div>
+                <div className="sm:text-right">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">{config.entityLabel}</p>
+                  <p className="mt-1 text-xl font-black">{selected[config.numberKey]}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-2xl border border-[var(--color-panel-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">{config.primaryLabel} Details</p>
+                <p className="mt-2 text-lg font-bold text-[var(--color-text-primary)]">{selected[config.primaryField]?.name || selected[config.primaryField]?.fullName || '-'}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
+                  {[selected[config.primaryField]?.contactPerson, selected[config.primaryField]?.email, selected[config.primaryField]?.phone, selected[config.primaryField]?.address].filter(Boolean).join(' • ') || 'No additional contact details provided.'}
+                </p>
+                {selected[config.primaryField]?.tin && <p className="mt-1 text-sm text-[var(--color-text-secondary)]">TIN: {selected[config.primaryField].tin}</p>}
+              </div>
+              <div className="rounded-2xl border border-[var(--color-panel-border)] p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">Document Details</p>
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <span className="text-[var(--color-text-secondary)]">Date</span><span className="text-right font-semibold text-[var(--color-text-primary)]">{formatDate(selected.invoiceDate || selected.receiptDate || selected.paymentDate || selected.createdAt)}</span>
+                  <span className="text-[var(--color-text-secondary)]">Reference</span><span className="text-right font-semibold text-[var(--color-text-primary)]">{selected.vendorInvoiceNumber || selected.referenceNumber || '-'}</span>
+                  <span className="text-[var(--color-text-secondary)]">Payment</span><span className="text-right font-semibold capitalize text-[var(--color-text-primary)]">{String(selected.paymentMethod || '-').replace(/_/g, ' ')}</span>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               <Info label={config.numberLabel} value={selected[config.numberKey]} />
               <Info label={config.primaryLabel} value={selected[config.primaryField]?.name || selected[config.primaryField]?.fullName || '-'} />
               <Info label="Amount" value={formatCurrency(selected.amount ?? selected.totalAmount)} />
+              {config.documentKind === 'purchase-invoice' && <Info label="Tax" value={formatCurrency(selected.taxTotal)} />}
+              {config.documentKind === 'purchase-invoice' && <Info label="Amount Paid" value={formatCurrency(selected.amountPaid)} />}
               <Info label="Balance" value={formatCurrency(selected.balance)} />
               <Info label="Status" value={selected.paymentStatus || selected.status || selected.documentStatus} />
               <Info label="Created" value={formatDate(selected.createdAt)} />
@@ -799,6 +853,8 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
                       <th className="px-4 py-3 font-medium">Item</th>
                       <th className="px-4 py-3 font-medium">Qty</th>
                       <th className="px-4 py-3 font-medium">Unit</th>
+                      <th className="px-4 py-3 font-medium">Discount</th>
+                      <th className="px-4 py-3 font-medium">Tax</th>
                       <th className="px-4 py-3 font-medium">Total</th>
                     </tr>
                   </thead>
@@ -808,6 +864,8 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
                         <td className="px-4 py-3">{item.description || item.productName || item.sku || '-'}</td>
                         <td className="px-4 py-3">{Number(item.quantity ?? 0).toLocaleString()}</td>
                         <td className="px-4 py-3">{formatCurrency(item.unitCost || item.unitPrice)}</td>
+                        <td className="px-4 py-3">{formatCurrency(item.discountAmount || item.discount)}</td>
+                        <td className="px-4 py-3">{formatCurrency(item.taxAmount || item.tax)}</td>
                         <td className="px-4 py-3">{formatCurrency(item.lineTotal || item.total)}</td>
                       </tr>
                     ))}
@@ -838,7 +896,7 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
             )}
 
             <div className="flex flex-wrap justify-end gap-2">
-              <button type="button" onClick={() => PrintWindow({ doc: selected, config })} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+              <button type="button" onClick={() => PrintWindow({ doc: selected, config, business: businessProfile, primaryColor, secondaryColor })} className="inline-flex items-center gap-2 rounded-xl bg-[var(--brand-primary)] px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
                 <Printer className="h-4 w-4" />
                 Print
               </button>
@@ -854,7 +912,8 @@ export function FinancialDocumentWorkspace({ docType, mode = 'list', initialDocu
                   Post
                 </button>
               )}
-              {(config.canVoid || config.canReverse) && (
+              {((config.canVoid && String(selected.status).toLowerCase() === 'posted') ||
+                (config.canReverse && String(selected.documentStatus).toLowerCase() === 'posted' && String(selected.paymentStatus).toLowerCase() === 'unpaid')) && (
                 <button type="button" onClick={() => reverseOrVoid(selected.id)} className="inline-flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-500/20 dark:text-rose-300">
                   <XCircle className="h-4 w-4" />
                   {config.canReverse ? 'Reverse' : 'Void'}

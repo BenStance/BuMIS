@@ -12,6 +12,8 @@ import { User } from '../../database/entities/user.entity';
 import { LedgerModule } from '../ledger/ledger.module';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
+import { SalesReceiptsModule } from '../sales-receipts/sales-receipts.module';
+import { SalesReceiptAllocation } from '../../database/entities/sales-receipt-allocation.entity';
 
 @Module({
   imports: [
@@ -25,8 +27,10 @@ import { InvoicesService } from './invoices.service';
       SystemSetting,
       AuditLog,
       User,
+      SalesReceiptAllocation,
     ]),
     LedgerModule,
+    SalesReceiptsModule,
   ],
   controllers: [InvoicesController],
   providers: [InvoicesService],

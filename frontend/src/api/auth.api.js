@@ -4,6 +4,14 @@ export function login(payload) {
   return request('/auth/login', { method: 'POST', body: payload, auth: false })
 }
 
+export function registerBusiness(payload) {
+  return request('/auth/register-business', { method: 'POST', body: payload, auth: false })
+}
+
+export function verifyBusinessRegistration(payload) {
+  return request('/auth/verify-business-registration', { method: 'POST', body: payload, auth: false })
+}
+
 export function me() {
   return request('/auth/me')
 }

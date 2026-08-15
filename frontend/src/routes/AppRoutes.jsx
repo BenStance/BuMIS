@@ -10,6 +10,7 @@ import { LoginPage } from '../pages/auth/LoginPage.jsx'
 import { ForgotPasswordPage } from '../pages/auth/ForgotPasswordPage.jsx'
 import { ResetPasswordPage } from '../pages/auth/ResetPasswordPage.jsx'
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage.jsx'
+import { RegisterBusinessPage } from '../pages/auth/RegisterBusinessPage.jsx'
 import { InvoiceListPage } from '../pages/invoices/InvoiceListPage.jsx'
 import { InvoiceDetailsPage } from '../pages/invoices/InvoiceDetailsPage.jsx'
 import { InvoiceCreatePage } from '../pages/invoices/InvoiceCreatePage.jsx'
@@ -96,7 +97,7 @@ function getAuditForRole(roleName) {
   }
 
   if (roleName === ROLES.STAFF) {
-    return <StaffAuditLogsPage />
+    return <BusinessAuditLogsPage />
   }
 
   return <BusinessAuditLogsPage />
@@ -265,6 +266,10 @@ export function AppRoutes() {
       return <LoginPage onSuccess={setSession} />
     }
 
+    if (currentPath === '/register') {
+      return <RegisterBusinessPage />
+    }
+
     if (currentPath === '/forgot-password') {
       return <ForgotPasswordPage />
     }
@@ -276,7 +281,7 @@ export function AppRoutes() {
     return <Redirect to="/login" />
   }
 
-  if (currentPath === '/' || currentPath === '/login' || currentPath === '/forgot-password' || currentPath === '/reset-password') {
+  if (currentPath === '/' || currentPath === '/login' || currentPath === '/register' || currentPath === '/forgot-password' || currentPath === '/reset-password') {
     return <Redirect to="/dashboard" />
   }
 

@@ -7,11 +7,11 @@ import { Role } from './role.entity';
 @Unique('UQ_RolePermissions_RoleId_PermissionId', ['roleId', 'permissionId'])
 export class RolePermission extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'RoleId', type: 'uniqueidentifier' })
+  @Column({ name: 'RoleId', type: 'uuid' })
   roleId!: string;
 
   @Index()
-  @Column({ name: 'PermissionId', type: 'uniqueidentifier' })
+  @Column({ name: 'PermissionId', type: 'uuid' })
   permissionId!: string;
 
   @ManyToOne(() => Role, (role) => role.permissions, { onDelete: 'CASCADE' })

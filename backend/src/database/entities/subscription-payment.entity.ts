@@ -9,39 +9,39 @@ import { User } from './user.entity';
 @Entity({ name: 'SubscriptionPayments' })
 export class SubscriptionPayment extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'SubscriptionId', type: 'uniqueidentifier' })
+  @Column({ name: 'SubscriptionId', type: 'uuid' })
   subscriptionId!: string;
 
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier' })
+  @Column({ name: 'BusinessId', type: 'uuid' })
   businessId!: string;
 
   @Index()
-  @Column({ name: 'PlanId', type: 'uniqueidentifier' })
+  @Column({ name: 'PlanId', type: 'uuid' })
   planId!: string;
 
   @Column({ name: 'Amount', type: 'decimal', precision: 18, scale: 2, default: 0 })
   amount!: number;
 
-  @Column({ name: 'PaymentMethod', type: 'nvarchar', length: 100, nullable: true })
+  @Column({ name: 'PaymentMethod', type: 'varchar', length: 100, nullable: true })
   paymentMethod?: string;
 
-  @Column({ name: 'TransactionReference', type: 'nvarchar', length: 150, nullable: true })
+  @Column({ name: 'TransactionReference', type: 'varchar', length: 150, nullable: true })
   transactionReference?: string;
 
-  @Column({ name: 'ProofPath', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'ProofPath', type: 'varchar', length: 500, nullable: true })
   proofPath?: string;
 
-  @Column({ name: 'Status', type: 'nvarchar', length: 30, default: SubscriptionPaymentStatus.PENDING })
+  @Column({ name: 'Status', type: 'varchar', length: 30, default: SubscriptionPaymentStatus.PENDING })
   status!: SubscriptionPaymentStatus;
 
-  @Column({ name: 'ReviewedBy', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'ReviewedBy', type: 'uuid', nullable: true })
   reviewedById?: string;
 
-  @Column({ name: 'ReviewedAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'ReviewedAt', type: 'timestamp', nullable: true })
   reviewedAt?: Date;
 
-  @Column({ name: 'RejectionReason', type: 'nvarchar', length: 500, nullable: true })
+  @Column({ name: 'RejectionReason', type: 'varchar', length: 500, nullable: true })
   rejectionReason?: string;
 
   @ManyToOne(() => BusinessSubscription, (subscription) => subscription.payments, { onDelete: 'CASCADE' })

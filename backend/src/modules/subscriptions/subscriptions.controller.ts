@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import type { Request } from 'express';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { randomUUID } from 'crypto';
+import { unlink } from 'fs/promises';
 import { SubscriptionsService } from './subscriptions.service';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
@@ -51,23 +53,27 @@ export class SubscriptionsController {
   @Post('businesses/request')
   @UseInterceptors(
     FileInterceptor('proof', {
+      limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+      fileFilter: (req: Request, file: Express.Multer.File, callback) => {
+        const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+        callback(allowedTypes.has(file.mimetype) ? null : new BadRequestException('Only PDF, JPEG, and PNG payment proofs are allowed'), allowedTypes.has(file.mimetype));
+      },
       storage: diskStorage({
         destination: (req: Request, file: Express.Multer.File, callback: (error: Error | null, destination: string) => void) => {
           const uploadDir = join(process.cwd(), 'uploads', 'subscriptions');
           if (!existsSync(uploadDir)) {
-            mkdirSync(uploadDir, { recursive: true });
+            mkdirSync(uploadDir, { recursive: true, mode: 0o700 });
           }
           callback(null, uploadDir);
         },
         filename: (req: Request, file: Express.Multer.File, callback: (error: Error | null, filename: string) => void) => {
-          const timestamp = Date.now();
-          const sanitized = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-          callback(null, `${timestamp}-${sanitized}`);
+          const extensions: Record<string, string> = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png' };
+          callback(null, `${randomUUID()}${extensions[file.mimetype] || ''}`);
         },
       }),
     }),
   )
-  requestSubscription(
+  async requestSubscription(
     @Req() req: Request,
     @UploadedFile() proof: Express.Multer.File | undefined,
     @CurrentUser() user: Record<string, unknown>,
@@ -84,9 +90,13 @@ export class SubscriptionsController {
           : undefined,
       paymentMethod: String((body?.paymentMethod ?? '') || '').trim() || undefined,
       transactionReference: String((body?.transactionReference ?? '') || '').trim() || undefined,
-      proofPath: String((body?.proofPath ?? '') || '').trim() || undefined,
     };
-    return this.subscriptionsService.requestSubscription(normalizedDto, proof, user as never);
+    try {
+      return await this.subscriptionsService.requestSubscription(normalizedDto, proof, user as never);
+    } catch (error) {
+      if (proof?.path) await unlink(proof.path).catch(() => undefined);
+      throw error;
+    }
   }
 
   @Get('me')

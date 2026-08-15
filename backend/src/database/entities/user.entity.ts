@@ -14,30 +14,30 @@ import { UserPermission } from './user-permission.entity';
 @Entity({ name: 'Users' })
 export class User extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier', nullable: true })
+  @Column({ name: 'BusinessId', type: 'uuid', nullable: true })
   businessId?: string;
 
   @Index()
-  @Column({ name: 'RoleId', type: 'uniqueidentifier' })
+  @Column({ name: 'RoleId', type: 'uuid' })
   roleId!: string;
 
-  @Column({ name: 'FullName', type: 'nvarchar', length: 200 })
+  @Column({ name: 'FullName', type: 'varchar', length: 200 })
   fullName!: string;
 
   @Index({ unique: true })
-  @Column({ name: 'Email', type: 'nvarchar', length: 150 })
+  @Column({ name: 'Email', type: 'varchar', length: 150 })
   email!: string;
 
-  @Column({ name: 'PasswordHash', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'PasswordHash', type: 'varchar', length: 255, nullable: true })
   passwordHash?: string;
 
-  @Column({ name: 'Status', type: 'nvarchar', length: 30, default: UserStatus.INACTIVE })
+  @Column({ name: 'Status', type: 'varchar', length: 30, default: UserStatus.INACTIVE })
   status!: UserStatus;
 
-  @Column({ name: 'LastLoginAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'LastLoginAt', type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
 
-  @Column({ name: 'EmailVerifiedAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'EmailVerifiedAt', type: 'timestamp', nullable: true })
   emailVerifiedAt?: Date;
 
   @ManyToOne(() => Business, (business) => business.users, { onDelete: 'NO ACTION', nullable: true })

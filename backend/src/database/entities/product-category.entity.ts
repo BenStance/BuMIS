@@ -8,23 +8,23 @@ import { JoinColumn, ManyToOne } from 'typeorm';
 @Entity({ name: 'ProductCategories' })
 export class ProductCategory extends BaseUuidEntity {
   @Index()
-  @Column({ name: 'BusinessId', type: 'uniqueidentifier' })
+  @Column({ name: 'BusinessId', type: 'uuid' })
   businessId!: string;
 
-  @Column({ name: 'Code', type: 'nvarchar', length: 50, nullable: true })
+  @Column({ name: 'Code', type: 'varchar', length: 50, nullable: true })
   code?: string;
 
   @Index()
-  @Column({ name: 'Name', type: 'nvarchar', length: 150 })
+  @Column({ name: 'Name', type: 'varchar', length: 150 })
   name!: string;
 
-  @Column({ name: 'Description', type: 'nvarchar', length: 255, nullable: true })
+  @Column({ name: 'Description', type: 'varchar', length: 255, nullable: true })
   description?: string;
 
-  @Column({ name: 'Status', type: 'nvarchar', length: 30, default: RecordStatus.ACTIVE })
+  @Column({ name: 'Status', type: 'varchar', length: 30, default: RecordStatus.ACTIVE })
   status!: RecordStatus;
 
-  @Column({ name: 'DeletedAt', type: 'datetime2', nullable: true })
+  @Column({ name: 'DeletedAt', type: 'timestamp', nullable: true })
   deletedAt?: Date;
 
   @ManyToOne(() => Business, (business) => business.categories, { onDelete: 'NO ACTION' })
