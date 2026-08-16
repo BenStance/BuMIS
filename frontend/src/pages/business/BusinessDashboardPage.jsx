@@ -143,7 +143,7 @@ export function BusinessDashboardPage() {
         { name: 'Products', value: summary.businessStatistics.products || 0 },
         { name: 'Customers', value: summary.businessStatistics.customers || 0 },
         { name: 'Vendors', value: summary.businessStatistics.vendors || 0 },
-        { name: 'Active Users', value: summary.businessStatistics.activeUsers || 0 },
+        { name: 'Users', value: summary.businessStatistics.totalUsers || 0 },
       ]
     : [];
 
@@ -329,6 +329,14 @@ export function BusinessDashboardPage() {
             </ResponsiveContainer>
           ) : (
             <p className="py-8 text-center text-[var(--color-text-secondary)]">No statistics available.</p>
+          )}
+          {!loading && summary?.businessStatistics && (
+            <div className="mx-5 mb-5 flex items-center justify-between rounded-xl border border-[var(--color-panel-border)] bg-black/[0.02] px-4 py-3 text-sm dark:bg-white/[0.03]">
+              <span className="text-[var(--color-text-secondary)]">Active users in this business</span>
+              <span className="font-bold text-[var(--color-text-primary)]">
+                {summary.businessStatistics.activeUsers || 0} of {summary.businessStatistics.totalUsers || 0} ({Number(summary.businessStatistics.activeUserPercentage || 0).toFixed(0)}%)
+              </span>
+            </div>
           )}
         </div>
       </div><br/>

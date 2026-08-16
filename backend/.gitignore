@@ -12,3 +12,4 @@ uploads/logos/*
 !uploads/logos/.gitkeep
 uploads/products/*
 !uploads/products/.gitkeep
+!uploads/*

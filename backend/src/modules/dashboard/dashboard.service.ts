@@ -163,23 +163,36 @@ export class DashboardService {
   }
 
   private async businessStatistics(businessId: string): Promise<Record<string, unknown>> {
-    const [products, customers, vendors, users, business] = await Promise.all([
+    const [products, customers, vendors, userCounts, business, inventoryValue] = await Promise.all([
       this.productsRepository.count({ where: { businessId } }),
       this.customersRepository.count({ where: { businessId } }),
       this.vendorsRepository.count({ where: { businessId } }),
-      this.usersRepository.count({ where: { businessId, status: UserStatus.ACTIVE } }),
+      this.usersRepository
+        .createQueryBuilder('user')
+        .select('COUNT(user.id)', 'totalUsers')
+        .addSelect('COUNT(user.id) FILTER (WHERE user.status = :activeStatus)', 'activeUsers')
+        .where('user.businessId = :businessId', { businessId })
+        .setParameter('activeStatus', UserStatus.ACTIVE)
+        .getRawOne<{ totalUsers: string; activeUsers: string }>(),
       this.businessesRepository.findOne({
         where: { id: businessId },
         relations: ['activeSubscription', 'activeSubscription.plan'],
       }),
+      this.inventoryValue(businessId),
     ]);
+
+    const totalUsers = Number(userCounts?.totalUsers ?? 0);
+    const activeUsers = Number(userCounts?.activeUsers ?? 0);
 
     return {
       products,
       customers,
       vendors,
-      activeUsers: users,
-      inventoryValue: await this.inventoryValue(businessId),
+      totalUsers,
+      activeUsers,
+      inactiveUsers: Math.max(totalUsers - activeUsers, 0),
+      activeUserPercentage: totalUsers > 0 ? Number(((activeUsers / totalUsers) * 100).toFixed(2)) : 0,
+      inventoryValue,
       activeSubscriptionStatus: business?.activeSubscription?.status ?? SubscriptionStatus.CANCELLED,
     };
   }
